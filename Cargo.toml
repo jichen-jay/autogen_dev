@@ -1,0 +1,8 @@
+[package]
+name = "autogen_dev"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+phantom-data = "0.0.1"
+serde_json = "1.0.128"
