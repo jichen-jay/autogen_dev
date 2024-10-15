@@ -9,3 +9,8 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 autogen_core = { workspace = true }
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = {version="1", features=["full"]}
+regex = "1.11.0"
