@@ -1,8 +1,11 @@
-
 use serde_json::Value;
-use std::io::Result;
+use std::{collections::HashMap, io::Result};
+use once_cell::sync::Lazy;
+
+static STORE: Lazy<HashMap<String, Func>> = Lazy::new(|| HashMap::new());
 
 pub type Func = Box<dyn Fn(&[u8]) -> Result<String> + Send + Sync>;
+
 
 pub struct Message {
     pub source: String,
@@ -35,6 +38,15 @@ pub struct FunctionCall {
     pub id: String,
     pub args: &'static [u8],
     pub name: String,
+}
+
+impl FunctionCall {
+    pub fn run(self) {
+        let bindings = &STORE;
+        let function = bindings.get(&self.name).unwrap();
+
+        function(self.args);
+    }
 }
 
 

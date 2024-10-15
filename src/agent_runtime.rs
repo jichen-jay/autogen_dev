@@ -60,11 +60,10 @@ pub struct SubscriptionManager {
 
 impl SubscriptionManager {
     pub async fn add_subscription(self, subscription: Subscription) {
-let agent_id = subscription.map_to_agent(&self.id);
-
- self.subscribed_recipients.insert(subscription)
-
-
+    //     let agent_id = subscription.map_to_agent(&self.id);
+    //     self.subscribed_recipients.insert(subscription);
+    
+    
     }
 
     pub async fn remove_subscription(self) {}
@@ -73,7 +72,7 @@ let agent_id = subscription.map_to_agent(&self.id);
         todo!()
     }
 
-   pub async fn get_subscribed_recipients(self, topic: TopicId) -> Vec<AgentId> {
+    pub async fn get_subscribed_recipients(self, topic: TopicId) -> Vec<AgentId> {
         let mut res = self.subscribed_recipients.clone();
         if !self.seen_topics.contains(&topic) {
             res.remove(&topic);
@@ -87,8 +86,8 @@ let agent_id = subscription.map_to_agent(&self.id);
             .collect::<Vec<AgentId>>()
     }
 
-  pub  fn build_for_new_topic(&mut self, topic_id: TopicId) {
-        self.seen_topics.push(topic_id);
+    pub fn build_for_new_topic(&mut self, topic_id: TopicId) {
+        self.seen_topics.insert(topic_id);
 
         for subscription in &self.subscriptions {
             if subscription.is_match(&topic_id) {

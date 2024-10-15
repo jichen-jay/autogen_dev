@@ -21,7 +21,7 @@ pub struct BaseChatAgent {
     pub model_context: Option<Vec<Message>>,
     pub code_exec_engine: Option<Engine>,
     pub tool_schema: Option<Vec<Schema>>,
-    pub registered_tools: Option<Vec<Tool>>,
+    pub registered_tools: Option<Vec<FunctionTool>>,
 }
 
 pub struct Schema;
@@ -45,7 +45,7 @@ pub struct CodeResult {
 }
 
 pub trait ToolUse<BaseChatAgent> {
-    fn registered_tools(self) -> Vec<Tool>;
+    fn registered_tools(self) -> Vec<FunctionTool>;
 }
 
 pub trait CodeExecute<BaseChatAgent> {
