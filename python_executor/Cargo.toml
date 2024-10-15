@@ -1,0 +1,11 @@
+[package]
+name = "python_executor"
+version = "0.1.0"
+edition = "2021"
+resolver = "2"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+autogen_core = { workspace = true }
