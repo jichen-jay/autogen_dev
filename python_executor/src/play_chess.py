@@ -1,24 +1,3 @@
-use std::io::Write;
-use std::process::Command;
-
-fn run_python_script(script: &str) -> Result<String, std::io::Error> {
-    let mut child = Command::new("python")
-        .arg("-c")
-        .arg(script)
-        .stdout(std::process::Stdio::piped())
-        .spawn()?;
-
-    let output = child.wait_with_output()?;
-    Ok(String::from_utf8_lossy(&output.stdout).to_string())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_run_python_script() {
-        let script = r#"
 from chess import BLACK, SQUARE_NAMES, WHITE, Board, Move
 from chess import piece_name as get_piece_name
 from typing import Literal, Annotated
@@ -126,11 +105,3 @@ def get_legal_moves_black() -> str:
 
 
 get_legal_moves_black()
-"#;
-
-        match run_python_script(script) {
-            Ok(output) => println!("Output: {}", output),
-            Err(e) => eprintln!("Error: {}", e),
-        }
-    }
-}
