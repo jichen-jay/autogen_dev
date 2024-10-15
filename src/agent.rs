@@ -2,6 +2,17 @@ use crate::common_types::*;
 use crate::model_client::*;
 use crate::tool::*;
 
+pub struct Agent {
+    pub id: String,
+    pub meta_data: String,
+}
+
+impl Agent {
+    async fn on_messages(self) {}
+
+    pub fn save_state(self) {}
+    pub fn load_state(self) {}
+}
 pub struct BaseChatAgent {
     pub name: String,
     pub description: String,

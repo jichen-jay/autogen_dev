@@ -1,7 +1,8 @@
 
 use serde_json::Value;
+use std::io::Result;
 
-type Fn = fn(&[u8]) -> String;
+pub type Func = Box<dyn Fn(&[u8]) -> Result<String> + Send + Sync>;
 
 pub struct Message {
     pub source: String,
@@ -13,7 +14,7 @@ pub struct Message {
 pub struct MessageTrack {
     pub history: Vec<Message>,
     pub summary: String,
-    pub compression_rules: Fn,
+    pub compression_rules: Func,
 }
 
 pub enum Content {
