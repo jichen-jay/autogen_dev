@@ -152,12 +152,12 @@ impl AgentRuntime {
     ) {
         self.message_queue
             .push(MessageEnvelope::PublishMessageEnvelope(
-                (WrappedMessage {
+                WrappedMessage {
                     sender: sender,
                     recepient: recepient,
                     message: message,
                     parent: None,
-                }),
+                },
                 topic_id,
             ));
     }

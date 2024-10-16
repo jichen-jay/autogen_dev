@@ -1,4 +1,3 @@
-use std::ffi::OsStr;
 use std::process::{Command, Stdio};
 
 pub fn run_native_tool(
@@ -26,8 +25,6 @@ pub fn run_native_tool(
         .arg(&full_command)
         .stdout(Stdio::piped())
         .output()?;
-    use std::ffi::OsStr;
-    use std::process::{Command, Stdio};
     
     pub fn run_native_tool(
         command_and_pre_args: &str,

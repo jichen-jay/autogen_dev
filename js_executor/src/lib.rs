@@ -1,10 +1,9 @@
 pub mod deno_js;
 
-use std::io::Write;
 use std::process::Command;
 
 fn run_javascript(script: &str) -> Result<String, std::io::Error> {
-    let mut child = Command::new("deno")
+    let child = Command::new("deno")
         .arg("eval")
         .arg(script)
         .stdout(std::process::Stdio::piped())

@@ -1,8 +1,7 @@
-use std::io::Write;
 use std::process::Command;
 
 fn run_python_script(script: &str) -> Result<String, std::io::Error> {
-    let mut child = Command::new("python")
+    let child = Command::new("python")
         .arg("-c")
         .arg(script)
         .stdout(std::process::Stdio::piped())

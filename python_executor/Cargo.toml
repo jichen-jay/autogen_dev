@@ -2,7 +2,7 @@
 name = "python_executor"
 version = "0.1.0"
 edition = "2021"
-resolver = "2"
+
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -14,3 +14,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = {version="1", features=["full"]}
 regex = "1.11.0"
+
+
+[lints]
+rust = { unused_variables = "allow", dead_code = "allow" }

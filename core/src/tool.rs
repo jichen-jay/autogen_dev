@@ -212,7 +212,7 @@ pub struct FunctionCallInput {
 
 
 pub fn get_current_weather(location: String, unit: String) -> Result<String, String> {
-    if (location.as_str() == "New York") {
+    if location.as_str() == "New York" {
         Ok(format!("Weather for {} in {}", location, unit))
     } else {
         Err("I only forecast New York".to_string())

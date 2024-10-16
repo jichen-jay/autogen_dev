@@ -1,14 +1,15 @@
-use rustyscript::{json_args, Error, Module, Runtime, RuntimeOptions, Undefined};
-use std::time::Duration;
+// use rustyscript::json_args;
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rustyscript::{Error, Module, Runtime, RuntimeOptions, Undefined};
+    use std::time::Duration;
 
     #[test]
     fn test_module_execution() -> Result<(), Error> {
-//locad multiple module, solve dependency
-/*         let lodash = Module::new("lodash.js", "// lodash implementation");
+        //locad multiple module, solve dependency
+        /*         let lodash = Module::new("lodash.js", "// lodash implementation");
         let main_module = Module::new("main.js", "// Your main code");
 
         runtime.load_module(&lodash)?;

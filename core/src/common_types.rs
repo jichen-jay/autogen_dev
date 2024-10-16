@@ -1,4 +1,3 @@
-use serde_json::Value;
 use std::{collections::HashMap, io::Result};
 use once_cell::sync::Lazy;
 
@@ -40,4 +39,44 @@ pub enum FinishReason {
 pub struct RequestUsage {
     pub prompt_tokens: i32,
     pub completion_tokens: i32,
+}
+
+
+pub struct CodeBlock {
+    pub code: String,
+    pub language: String,
+}
+
+pub struct CodeResult {
+    pub exit_code: u8,
+    pub output: String,
+}
+
+pub enum LlmMessage {
+    SystemMessage(Content),
+    UserMessage(Content),
+    AssistantMessage(Content),
+    FunctionExecutionResultMessage(FunctionExecutionResult),
+}
+
+pub struct FunctionExecutionResult {
+    pub content: String,
+    pub call_id: String,
+}
+
+pub struct FunctionExecutionResultMessage {
+    pub content: Vec<FunctionExecutionResult>,
+}
+
+
+pub struct SystemMessage {
+    pub content: Content,
+}
+
+pub struct AssistantMessage {
+    pub content: Content,
+}
+
+pub struct UserMessage {
+    pub content: Content,
 }

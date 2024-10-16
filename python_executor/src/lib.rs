@@ -2,14 +2,14 @@ pub mod vanilla_python;
 
 use anyhow::Result;
 use regex::Regex;
-use tokio::time::timeout;
 use std::fs::File;
-use std::io::{BufRead, BufReader, Stdin, Stdout, Stderr, Read, Write};
+use std::io::{BufRead, BufReader, Read, Write};
+use tokio::time::timeout;
+// use std::io::{BufRead, BufReader, Stdin, Stdout, Stderr, Read, Write};
 use std::process::{Command, Stdio};
+use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::task;
-use std::time::Duration;
-
 
 pub async fn run_python_wrapper(code_wrapped_in_text: &str) -> (bool, String, String) {
     println!("raw code: {:?}\n\n", code_wrapped_in_text);
@@ -186,9 +186,7 @@ pub async fn get_user_feedback() -> Result<String> {
     let mut reader = BufReader::new(std::io::stdin());
 
     match timeout(Duration::from_secs(10), async {
-        reader
-            .read_line(&mut input)
-            .expect("Failed to read line");
+        reader.read_line(&mut input).expect("Failed to read line");
         input
     })
     .await
@@ -216,9 +214,8 @@ pub async fn get_user_feedback() -> Result<String> {
     }
 }
 
-pub  fn save_py_to_disk(path: &str, code: &str) -> Result<()> {
-    let mut file = File::create(path)
-        .expect("Failed to create or open file");
+pub fn save_py_to_disk(path: &str, code: &str) -> Result<()> {
+    let mut file = File::create(path).expect("Failed to create or open file");
 
     file.write_all(code.as_bytes())
         .expect("Failed to write code to file");
