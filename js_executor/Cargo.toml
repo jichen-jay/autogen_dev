@@ -9,3 +9,4 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 autogen_core = { workspace = true }
+rustyscript = "0.8.3"

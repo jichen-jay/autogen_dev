@@ -1,5 +1,5 @@
 [package]
-name = "rust_executor"
+name = "native_executor"
 version = "0.1.0"
 edition = "2021"
 resolver = "2"

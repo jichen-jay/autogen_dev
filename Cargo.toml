@@ -1,5 +1,5 @@
 [workspace]
-members = ["core", "rust_executor", "python_executor", "js_executor"]
+members = ["core", "native_executor", "python_executor", "js_executor"]
 
 [workspace.package]
 version = "0.1.0"
