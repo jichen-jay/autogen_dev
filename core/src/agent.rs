@@ -1,7 +1,7 @@
 use crate::common_types::*;
 use crate::tool::*;
-use std::collections::HashMap;
 use serde_json::Value;
+use std::collections::HashMap;
 
 pub struct Agent {
     pub id: String,
@@ -46,7 +46,7 @@ pub trait CodeExecute<BaseChatAgent> {
 
 pub struct ChatCompletionContext;
 
-impl ChatCompletionAgent {
+impl ChatCompletionContext {
     pub async fn add_message(self, message: LlmMessage) {
         todo!()
     }
@@ -71,18 +71,9 @@ pub trait CodeAssist<BaseChatAgent> {
         messages: Vec<Message>,
     ) -> impl std::future::Future<Output = Message> + Send;
 }
-pub struct ChatCompletionAgent {
-    pub description: String,
-    pub model_client: ChatCompletionClient,
-    pub system_message: Vec<SystemMessage>,
-    pub model_context: Option<Vec<ChatCompletionContext>>,
-    // pub code_exec_engine: Option<Engine>,
-    pub tools: Vec<FunctionTool>,
-}
-
 pub struct CreateResult {
     pub finish_reason: FinishReason,
-    pub content: Content,
+    pub content: TextContent,
     pub usage: RequestUsage,
 }
 
@@ -128,5 +119,30 @@ impl ChatCompletionClient {
 
     pub fn remainning_tokens(self, messages: Vec<LlmMessage>, tools: Vec<FunctionTool>) -> i16 {
         todo!()
+    }
+}
+
+pub struct ChatCompletionAgent {
+    pub description: String,
+    pub model_client: ChatCompletionClient,
+    pub system_message: Vec<Message>,
+    pub model_context: ChatCompletionContext,
+    // pub code_exec_engine: Option<Engine>,
+    pub tools: Vec<FunctionTool>,
+}
+
+impl ChatCompletionAgent {
+    pub async fn on_text_message(self, message: Message, ctx: MessageContext) {
+        let text_content = match message {
+            Message::TextMessage(tex) => tex.0,
+            _ => unreachable!(),
+        };
+
+        let mm_content = MultiModalContent::TextContent(text_content);
+        let msg: LlmMessage = LlmMessage::UserMessage(UserMessage {
+            content: mm_content,
+            source: ctx.sender,
+        });
+        self.model_context.add_message(msg).await;
     }
 }
