@@ -188,7 +188,8 @@ macro_rules! create_tool_with_function {
         }
     }};
 }
-
+ 
+#[derive(Debug)]
 pub struct FunctionCallInput {
     pub arguments_obj: Value,
     pub function_name: String,

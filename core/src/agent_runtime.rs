@@ -7,14 +7,14 @@ pub type AgentId = Uuid;
 pub type TopicId = Uuid;
 pub type SubscriptionId = Uuid;
 
-pub enum MessageEnvelope {
+pub enum ChatMessageEnvelope {
     SendMessageEnvelope(WrappedMessage),
     ResponseMessageEnvelope(WrappedMessage),
     PublishMessageEnvelope(WrappedMessage, String),
 }
 
 pub struct WrappedMessage {
-    pub message: Message,
+    pub message: ChatMessage,
     pub sender: String,
     pub recepient: String,
     pub parent: Option<String>,
@@ -104,7 +104,7 @@ impl SubscriptionManager {
 pub struct AgentRuntime {
     pub intervention_handlers: Option<Vec<InterventionHanlder>>,
     pub trace_provider: Option<TraceProvider>,
-    pub message_queue: Vec<MessageEnvelope>,
+    pub message_queue: Vec<ChatMessageEnvelope>,
     pub tool_store: HashMap<String, Func>,
     // pub agent_factories: HashMap<String, Agent>,
     pub instantiated_agents: HashMap<String, Agent>,
@@ -115,7 +115,7 @@ pub struct AgentRuntime {
 }
 
 impl AgentRuntime {
-    pub fn unprocessed_messages(self) -> Vec<MessageEnvelope> {
+    pub fn unprocessed_messages(self) -> Vec<ChatMessageEnvelope> {
         todo!()
     }
 
@@ -133,9 +133,9 @@ impl AgentRuntime {
     //         .collect::<HashSet<String>>()
     // }
 
-    pub fn send_message(&mut self, message: Message, recepient: String, sender: String) {
+    pub fn send_message(&mut self, message: ChatMessage, recepient: String, sender: String) {
         self.message_queue
-            .push(MessageEnvelope::SendMessageEnvelope(WrappedMessage {
+            .push(ChatMessageEnvelope::SendMessageEnvelope(WrappedMessage {
                 sender: sender,
                 recepient: recepient,
                 message: message,
@@ -145,13 +145,13 @@ impl AgentRuntime {
 
     pub fn publish_message(
         &mut self,
-        message: Message,
+        message: ChatMessage,
         topic_id: String,
         recepient: String,
         sender: String,
     ) {
         self.message_queue
-            .push(MessageEnvelope::PublishMessageEnvelope(
+            .push(ChatMessageEnvelope::PublishMessageEnvelope(
                 WrappedMessage {
                     sender: sender,
                     recepient: recepient,
@@ -164,5 +164,5 @@ impl AgentRuntime {
 
     pub fn save_state(self) {}
     pub fn load_state(self) {}
-    pub fn process_send(self, message_envelope: MessageEnvelope) {}
+    pub fn process_send(self, message_envelope: ChatMessageEnvelope) {}
 }

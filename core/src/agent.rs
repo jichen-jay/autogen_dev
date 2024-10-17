@@ -19,7 +19,7 @@ pub struct BaseChatAgent {
     pub description: String,
     pub model_client: Option<ChatCompletionClient>,
     pub system_message: Option<String>,
-    pub model_context: Option<Vec<Message>>,
+    pub model_context: Option<Vec<ChatMessage>>,
     pub code_exec_engine: Option<Engine>,
     pub tool_schema: Option<Vec<Schema>>,
     pub registered_tools: Option<Vec<FunctionTool>>,
@@ -30,7 +30,7 @@ pub struct Schema;
 pub struct Engine;
 
 impl BaseChatAgent {
-    async fn on_messages(self, messages: Message) -> Message {
+    async fn on_messages(self, messages: ChatMessage) -> ChatMessage {
         todo!()
     }
 }
@@ -65,11 +65,11 @@ impl ChatCompletionContext {
     }
 }
 pub trait CodeAssist<BaseChatAgent> {
-    //    async fn on_messages(self, messages: Vec<Message>) -> Message;
+    //    async fn on_messages(self, messages: Vec<Message>) -> ChatMessage;
     fn on_messages(
         self,
-        messages: Vec<Message>,
-    ) -> impl std::future::Future<Output = Message> + Send;
+        messages: Vec<ChatMessage>,
+    ) -> impl std::future::Future<Output = ChatMessage> + Send;
 }
 pub struct CreateResult {
     pub finish_reason: FinishReason,
@@ -125,24 +125,17 @@ impl ChatCompletionClient {
 pub struct ChatCompletionAgent {
     pub description: String,
     pub model_client: ChatCompletionClient,
-    pub system_message: Vec<Message>,
+    pub system_message: Vec<ChatMessage>,
     pub model_context: ChatCompletionContext,
     // pub code_exec_engine: Option<Engine>,
     pub tools: Vec<FunctionTool>,
 }
 
 impl ChatCompletionAgent {
-    pub async fn on_text_message(self, message: Message, ctx: MessageContext) {
-        let text_content = match message {
-            Message::TextMessage(tex) => tex.0,
-            _ => unreachable!(),
-        };
-
-        let mm_content = MultiModalContent::TextContent(text_content);
-        let msg: LlmMessage = LlmMessage::UserMessage(UserMessage {
-            content: mm_content,
-            source: ctx.sender,
-        });
+    pub async fn on_text_message(self, message: ChatMessage, ctx: ChatMessageContext) {
+        let msg: LlmMessage = LlmMessage::user_text(message.get_content(), ctx.sender);
         self.model_context.add_message(msg).await;
     }
+
+    
 }
