@@ -1,7 +1,9 @@
 /target
 Cargo.lock
 .env
-
+/wasi_sdk/target
+/wasi_sdk/Cargo.lock
+/wasi_sdk/.env
 # Added by cargo
 #
 # already existing elements were commented out

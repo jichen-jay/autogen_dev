@@ -7,6 +7,9 @@ resolver = "2"
 version = "0.1.0"
 edition = "2021"
 
+[workspace.exlude]
+members = ["wasi_sdk"]
+
 [workspace.dependencies]
 autogen_core = { path = "core" }
 anyhow = "1"
