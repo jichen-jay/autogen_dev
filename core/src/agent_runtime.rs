@@ -1,11 +1,10 @@
 use crate::agent::*;
-use crate::common_types::*;
+use crate::msg_types::*;
 use std::collections::{HashMap, HashSet};
-use uuid::Uuid;
+use crate::msg_types::{AgentId, TopicId,SubscriptionId, 
+chat_msg_types::ChatMessage,
 
-pub type AgentId = Uuid;
-pub type TopicId = Uuid;
-pub type SubscriptionId = Uuid;
+};
 
 pub enum ChatMessageEnvelope {
     SendMessageEnvelope(WrappedMessage),

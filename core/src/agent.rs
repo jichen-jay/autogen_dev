@@ -1,4 +1,7 @@
-use crate::common_types::*;
+use crate::msg_types::*;
+use crate::msg_types::{
+    chat_msg_types::ChatMessage, llm_msg_types::LlmMessage, ChatMessageContext,
+};
 use crate::tool::*;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -132,10 +135,43 @@ pub struct ChatCompletionAgent {
 }
 
 impl ChatCompletionAgent {
-    pub async fn on_text_message(self, message: ChatMessage, ctx: ChatMessageContext) {
-        let msg: LlmMessage = LlmMessage::user_text(message.get_content(), ctx.sender);
-        self.model_context.add_message(msg).await;
-    }
+    pub async fn on_message(self, message: ChatMessage, ctx: ChatMessageContext) {
+        match message {
+            ChatMessage::TextMessage(tex) => {}
+            ChatMessage::MultiModalMessage(mm) => match mm.content {
+                MultiModalContent::Text(tex) => {
+                    let msg: LlmMessage = LlmMessage::user_text(tex.text, ctx.sender);
+                    self.model_context.add_message(msg).await;
+                }
+                MultiModalContent::Image(img) => {
+                    let msg: LlmMessage = LlmMessage::user_image(img.image.into(), ctx.sender);
+                    self.model_context.add_message(msg).await;
+                }
+            },
+            ChatMessage::ToolCallMessage(tcm) => {
+                // let text = tool.content.into_iter().collect::<Vec<String>>().join();
+                // let msg: LlmMessage = LlmMessage::user_text(text, ctx.sender);
+                // self.model_context.add_message(msg).await;
 
-    
+                todo!()
+            }
+            ChatMessage::ToolCallResultMessage(tcrm) => {
+                let text = tcrm
+                    .content
+                    .content
+                    .into_iter()
+                    .map(|x| x.content.to_string())
+                    .collect::<Vec<String>>()
+                    .join(",");
+                let msg: LlmMessage = LlmMessage::user_text(text, ctx.sender);
+                self.model_context.add_message(msg).await;
+            }
+            ChatMessage::StopMessage(msg) => {
+                let text = msg.clone();
+                let msg: LlmMessage = LlmMessage::user_text(text, ctx.sender);
+
+                self.model_context.add_message(msg).await;
+            }
+        }
+    }
 }
