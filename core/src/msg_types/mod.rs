@@ -4,11 +4,60 @@ pub mod llm_msg_types;
 use std::error::Error;
 use uuid::Uuid;
 
+use crate::tool_types::SupportedType;
+
 pub type AgentId = Uuid;
 pub type TopicId = Uuid;
 pub type SubscriptionId = Uuid;
 
-pub type Func = Box<dyn Fn(&[u8]) -> Result<String, Box<dyn Error>> + Send + Sync>;
+// pub type Func = Box<dyn Fn(&[u8]) -> Result<String, Box<dyn Error>> + Send + Sync>;
+
+
+#[derive(Debug)]
+pub struct FunctionToolError(String);
+
+impl std::fmt::Display for FunctionToolError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl Error for FunctionToolError {}
+
+// Parsing functions as before...
+
+// Now define the CloneableFn trait without inheriting Clone
+pub trait CloneableFn:
+    Fn(&[SupportedType]) -> Result<String, Box<dyn Error + Send + Sync>>
+    + Send
+    + Sync
+{
+    fn clone_box(&self) -> Box<dyn CloneableFn>;
+}
+
+// Implement CloneableFn for all suitable types
+impl<T> CloneableFn for T
+where
+    T: Fn(&[SupportedType]) -> Result<String, Box<dyn Error + Send + Sync>>
+        + Send
+        + Sync
+        + Clone
+        + 'static,
+{
+    fn clone_box(&self) -> Box<dyn CloneableFn> {
+        Box::new(self.clone())
+    }
+}
+
+// Implement Clone for Box<dyn CloneableFn>
+impl Clone for Box<dyn CloneableFn> {
+    fn clone(&self) -> Box<dyn CloneableFn> {
+        self.clone_box()
+    }
+}
+
+// Define your Func type alias
+pub type Func = Box<dyn CloneableFn>;
 
 #[derive(Clone, Debug)]
 pub struct TextContent {
@@ -57,17 +106,19 @@ impl GetContent for Content {
     }
 }
 
+#[derive(Clone, Debug)]
 pub enum MultiModalContent {
     Text(TextContent),
     Image(ImageContent),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FunctionExecutionResult {
     pub content: String,
     pub call_id: String,
 }
 
+#[derive(PartialEq)]
 pub enum ResponseFormat {
     Text,
     JsonObject,

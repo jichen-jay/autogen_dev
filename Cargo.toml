@@ -1,5 +1,5 @@
 [workspace]
-members = ["core", "native_executor", "python_executor", "js_executor"]
+members = ["core", "native_executor", "python_executor", "js_executor", "tool_builder"]
 resolver = "2"
 
 

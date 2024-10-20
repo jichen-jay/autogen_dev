@@ -3,9 +3,10 @@ use crate::msg_types::{
 };
 use crate::{
     msg_types::{AgentId, TopicId},
-    tool::FunctionCallInput,
+    tool_types::FunctionCallInput,
 };
 
+#[derive(Debug, Clone)]
 pub enum LlmMessage {
     SystemMessage(SystemMessage),
     UserMessage(UserMessage),
@@ -13,23 +14,24 @@ pub enum LlmMessage {
     FunctionExecutionResultMessage(FunctionExecutionResultMessage),
 }
 
+#[derive(Debug, Clone)]
 pub struct SystemMessage {
     pub content: TextContent,
     pub source: AgentId,
 }
-
+#[derive(Clone, Debug)]
 pub struct UserMessage {
     pub content: MultiModalContent,
     pub source: AgentId,
 }
-
+#[derive(Debug, Clone)]
 pub struct AssistantMessage {
     pub content: AssistantMessageContent,
     pub source: AgentId,
 }
-
+#[derive(Debug, Clone)]
 pub struct FunctionExecutionResultMessage {
-    pub content: FunctionExecutionResult,
+    pub content: Vec<FunctionExecutionResult>,
     pub source: AgentId,
 }
 
@@ -84,10 +86,10 @@ impl LlmMessage {
         source: impl Into<AgentId>,
     ) -> Self {
         LlmMessage::FunctionExecutionResultMessage(FunctionExecutionResultMessage {
-            content: FunctionExecutionResult {
+            content: vec![FunctionExecutionResult {
                 content: content.into(),
                 call_id: call_id.into(),
-            },
+            }],
             source: source.into(),
         })
     }

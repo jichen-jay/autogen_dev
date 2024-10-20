@@ -1,13 +1,8 @@
-use once_cell::sync::Lazy;
-use std::collections::HashMap;
-
-use crate::tool::FunctionCallInput;
-
 use crate::msg_types::{
     AgentId, ContentData, Func, FunctionExecutionResult, GetContent, ImageContent,
-    MultiModalContent, TextContent,
+    MultiModalContent, TextContent
 };
-static STORE: Lazy<HashMap<String, Func>> = Lazy::new(|| HashMap::new());
+use crate::tool_types::FunctionCallInput;
 
 pub enum ChatMessage {
     TextMessage(TextMessage),
@@ -74,6 +69,7 @@ pub struct ChatMessageTrack {
     pub compression_rules: Func,
 }
 
+#[derive(Debug, Clone)]
 pub enum AssistantMessageContent {
     FunctionCallInput(FunctionCallInput),
     TextContent(TextContent),

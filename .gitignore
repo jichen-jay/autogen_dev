@@ -4,6 +4,9 @@ Cargo.lock
 /wasi_sdk/target
 /wasi_sdk/Cargo.lock
 /wasi_sdk/.env
+/tool_builder/target
+/tool_builder/Cargo.lock
+/tool_builder/.env
 # Added by cargo
 #
 # already existing elements were commented out
