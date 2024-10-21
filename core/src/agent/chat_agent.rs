@@ -1,10 +1,11 @@
-use crate::msg_types::chat_msg_types::TextMessage;
-use crate::msg_types::llm_msg_types::FunctionExecutionResultMessage;
+use crate::msg_types::chat_msg_types::{
+    MultiModalMessage, TextMessage, ToolCallResultContent, ToolCallResultMessage,
+};
 use crate::msg_types::{
     chat_msg_types::ChatMessage, llm_msg_types::LlmMessage, ChatMessageContext, CodeBlock,
-    CodeResult, FinishReason, FunctionExecutionResult, MultiModalContent, RequestUsage,
-    ResponseFormat, TextContent,
+    CodeResult, FinishReason, MultiModalContent, RequestUsage, ResponseFormat, TextContent,
 };
+use crate::msg_types::{new_agent_id, new_topic_id, FunctionExecutionResult, ImageContent};
 use crate::tool_types::{FunctionCallInput, Tool};
 use once_cell::sync::Lazy;
 use serde_json::Value;
@@ -90,6 +91,7 @@ pub trait CodeAssist<BaseChatAgent> {
 
 pub enum ResultContent {
     TextContent(TextContent),
+    MultiModalContent(MultiModalContent),
     FunctionCallContent(FunctionCallInput),
 }
 
@@ -174,11 +176,20 @@ impl ChatCompletionAgent {
                 }
             },
             ChatMessage::ToolCallMessage(tcm) => {
-                // let text = tool.content.into_iter().collect::<Vec<String>>().join();
-                // msg = LlmMessage::user_text(text, ctx.sender);
-                // self.model_context.add_message(msg).await;
+                let mut res = Vec::<String>::new();
+                for fc in tcm.content.content {
+                    let func_name = fc.function_name;
+                    let arguments_w_val = fc.arguments_obj;
 
-                todo!()
+                    let binding = STORE.lock().unwrap();
+                    let func = binding.get(&func_name).unwrap();
+                    let raw_result: String = func.run(arguments_w_val).expect("failed run");
+
+                    res.push(raw_result);
+                }
+                let call_id = new_topic_id();
+                let source = new_agent_id();
+                LlmMessage::function_result(res.join(", "), call_id, source)
             }
             ChatMessage::ToolCallResultMessage(tcrm) => {
                 let text = tcrm
@@ -195,43 +206,6 @@ impl ChatCompletionAgent {
         self.model_context.add_message(msg).await;
     }
 
-    pub async fn on_toolcall_message(
-        &mut self,
-        message: ChatMessage,
-        ctx: ChatMessageContext,
-    ) -> FunctionExecutionResultMessage {
-        let mut res = Vec::new();
-        match message {
-            ChatMessage::ToolCallMessage(tcm) => {
-                for fc in tcm.content.content {
-                    let func_name = fc.function_name;
-                    let arguments_w_val = fc.arguments_obj;
-
-                    let binding = STORE.lock().unwrap();
-                    let func = binding.get(&func_name).unwrap();
-                    // let function_tool = create_tool_with_function!(fn get_current_weather(location: String, unit: String) -> Result<String, String>, weather_tool_json);
-                    let raw_result = func.call(arguments_w_val).expect("failed run");
-
-                    let func_result = FunctionExecutionResult {
-                        content: raw_result,
-                        call_id: Uuid::default().to_string(),
-                    };
-
-                    res.push(func_result);
-                }
-            }
-
-            _ => unreachable!(),
-        }
-
-        let out = FunctionExecutionResultMessage {
-            content: res,
-            source: Uuid::default(),
-        };
-
-        out
-    }
-
     pub async fn on_reset(&mut self, message: Reset, ctx: ChatMessageContext) {
         self.model_context.clear().await;
     }
@@ -239,6 +213,16 @@ impl ChatCompletionAgent {
     pub async fn on_response_now(
         &mut self,
         message: ResponseNow,
+        ctx: ChatMessageContext,
+    ) -> ChatMessage {
+        let response = self.generate_response(message.response_format, ctx).await;
+
+        response
+    }
+
+    pub async fn on_publish_now(
+        &mut self,
+        message: PublishNow,
         ctx: ChatMessageContext,
     ) -> ChatMessage {
         let response = self.generate_response(message.response_format, ctx).await;
@@ -267,22 +251,61 @@ impl ChatCompletionAgent {
 
         match response.content {
             ResultContent::TextContent(tc) => {
-                let msg = LlmMessage::assistant_text(tc.text, Uuid::default());
+                let msg = LlmMessage::assistant_text(tc.text.clone(), Uuid::default());
                 self.model_context.add_message(msg).await;
+
+                ChatMessage::TextMessage(TextMessage {
+                    content: tc,
+                    source: ctx.sender,
+                })
             }
             ResultContent::FunctionCallContent(fcc) => {
-                // msg::assistant_text(fcc)
+                let func_name = fcc.function_name;
+                let arguments_w_val = fcc.arguments_obj;
+
+                let binding = STORE.lock().unwrap();
+                let func = binding.get(&func_name).unwrap();
+                let raw_result: String = func.run(arguments_w_val).expect("failed run");
+
+                let tcrm: ToolCallResultContent = ToolCallResultContent {
+                    content: vec![FunctionExecutionResult {
+                        content: raw_result,
+                        call_id: new_agent_id().to_string(),
+                    }],
+                };
+
+                ChatMessage::ToolCallResultMessage(ToolCallResultMessage {
+                    content: tcrm,
+                    source: ctx.sender,
+                })
+            }
+            ResultContent::MultiModalContent(mmc) => {
+                match mmc {
+                    MultiModalContent::Text(tc) => ChatMessage::TextMessage(TextMessage {
+                        content: tc,
+                        source: ctx.sender,
+                    }),
+
+                    MultiModalContent::Image(ic) => {
+                        ChatMessage::MultiModalMessage(MultiModalMessage {
+                            content: MultiModalContent::Image(ImageContent { image: ic.image }),
+                            source: ctx.sender,
+                        })
+                    }
+                };
                 todo!()
             }
-        };
+        }
+    }
 
-        // let response = self.send_message()
+    pub fn save_state(&mut self) -> HashMap<String, LlmMessage> {
+        self.model_context.save_state();
+        todo!()
+    }
 
-        ChatMessage::TextMessage(TextMessage {
-            content: TextContent {
-                text: "placeholder".to_string(),
-            },
-            source: Uuid::default(),
-        })
+    pub fn load_state(&mut self, state: HashMap<String, LlmMessage>) {
+        // self.model_context.load_state(state);
+
+        todo!()
     }
 }

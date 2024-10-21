@@ -12,6 +12,17 @@ pub type SubscriptionId = Uuid;
 
 // pub type Func = Box<dyn Fn(&[u8]) -> Result<String, Box<dyn Error>> + Send + Sync>;
 
+pub fn new_agent_id() -> AgentId {
+    Uuid::new_v4()
+}
+
+pub fn new_topic_id() -> TopicId {
+    Uuid::new_v4()
+}
+
+pub fn new_subscription_id() -> SubscriptionId {
+    Uuid::new_v4()
+}
 
 #[derive(Debug)]
 pub struct FunctionToolError(String);
@@ -28,9 +39,7 @@ impl Error for FunctionToolError {}
 
 // Now define the CloneableFn trait without inheriting Clone
 pub trait CloneableFn:
-    Fn(&[SupportedType]) -> Result<String, Box<dyn Error + Send + Sync>>
-    + Send
-    + Sync
+    Fn(&[SupportedType]) -> Result<String, Box<dyn Error + Send + Sync>> + Send + Sync
 {
     fn clone_box(&self) -> Box<dyn CloneableFn>;
 }

@@ -10,6 +10,9 @@ use tool_builder::create_tool_with_function;
 
 pub static STORE: Lazy<Mutex<HashMap<String, Tool>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
+
+pub struct  AgentType(String);
+
 #[derive(Debug)]
 pub struct FunctionToolError(String);
 
@@ -142,7 +145,7 @@ pub struct Tool {
     pub arg_types: Vec<String>,
 }
 impl Tool {
-    pub fn call(&self, arguments_w_val: Value) -> MyResult<String> {
+    pub fn run(&self, arguments_w_val: Value) -> MyResult<String> {
         let arguments = arguments_w_val
             .as_object()
             .ok_or("Invalid arguments format")?;
@@ -306,7 +309,7 @@ mod tests {
         if let Some(tool) = store.get("get_current_weather") {
             println!("tool sig : {:?}", tool.name.clone());
 
-            match tool.call(llm_output) {
+            match tool.run(llm_output) {
                 Ok(result) => println!("Result: {}", result),
                 Err(e) => eprintln!("Error: {e}"),
             }
@@ -324,7 +327,7 @@ mod tests {
 
         if let Some(tool) = store.get("process_values") {
             println!("tool sig : {:?}", tool.name.clone());
-            match tool.call(json_input) {
+            match tool.run(json_input) {
                 Ok(result) => println!("Result: {}", result),
                 Err(e) => eprintln!("Error: {e}"),
             }

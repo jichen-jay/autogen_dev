@@ -1,10 +1,11 @@
-use crate::agent::*;
+use crate::agent::chat_agent::Agent;
 use crate::msg_types::*;
 use std::collections::{HashMap, HashSet};
 use crate::msg_types::{AgentId, TopicId,SubscriptionId, 
 chat_msg_types::ChatMessage,
 
 };
+use crate::tool_types::{Tool, AgentType};
 
 pub enum ChatMessageEnvelope {
     SendMessageEnvelope(WrappedMessage),
@@ -14,8 +15,8 @@ pub enum ChatMessageEnvelope {
 
 pub struct WrappedMessage {
     pub message: ChatMessage,
-    pub sender: String,
-    pub recepient: String,
+    pub sender: Option<AgentId>,
+    pub recepient: Option<AgentId>,
     pub parent: Option<String>,
 }
 pub struct InterventionHanlder;
@@ -132,7 +133,7 @@ impl AgentRuntime {
     //         .collect::<HashSet<String>>()
     // }
 
-    pub fn send_message(&mut self, message: ChatMessage, recepient: String, sender: String) {
+    pub fn send_message(&mut self, message: ChatMessage, recepient: Option<AgentId>, sender: Option<AgentId>) {
         self.message_queue
             .push(ChatMessageEnvelope::SendMessageEnvelope(WrappedMessage {
                 sender: sender,
@@ -140,28 +141,47 @@ impl AgentRuntime {
                 message: message,
                 parent: None,
             }));
+            
     }
 
     pub fn publish_message(
         &mut self,
         message: ChatMessage,
-        topic_id: String,
-        recepient: String,
-        sender: String,
+        topic_id: TopicId,
+       sender : Option<AgentId>,
     ) {
         self.message_queue
             .push(ChatMessageEnvelope::PublishMessageEnvelope(
                 WrappedMessage {
                     sender: sender,
-                    recepient: recepient,
+                    recepient: None,
                     message: message,
                     parent: None,
                 },
-                topic_id,
+                topic_id.to_string(),
             ));
+            todo!()
     }
 
+
+    pub async fn register(&self, typ: &str, agent_factory: HashMap<String, Tool>, subscriptions: Vec<String> ) {
+        todo!()
+    }
+
+    pub async fn register_factory(&self, typ: AgentType, agent_factory: HashMap<String, Tool>) {
+        todo!()
+    }
+
+    pub async fn add_subscription(&self, subscription: SubscriptionId) {
+        todo!()
+    }
+
+    pub async fn remove_subscription(&mut self, id: SubscriptionId) {
+        todo!()
+    }
     pub fn save_state(self) {}
     pub fn load_state(self) {}
     pub fn process_send(self, message_envelope: ChatMessageEnvelope) {}
 }
+
+

@@ -70,7 +70,7 @@ impl LlmMessage {
         })
     }
 
-    pub fn assistant_function_call(
+    pub fn assistant_function_run(
         function_call: FunctionCallInput,
         source: impl Into<AgentId>,
     ) -> Self {
@@ -83,7 +83,7 @@ impl LlmMessage {
     pub fn function_result(
         content: impl Into<String>,
         call_id: impl Into<String>,
-        source: impl Into<AgentId>,
+        source: AgentId,
     ) -> Self {
         LlmMessage::FunctionExecutionResultMessage(FunctionExecutionResultMessage {
             content: vec![FunctionExecutionResult {
