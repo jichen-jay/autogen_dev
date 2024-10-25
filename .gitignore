@@ -7,6 +7,9 @@ Cargo.lock
 /tool_builder/target
 /tool_builder/Cargo.lock
 /tool_builder/.env
+/core/target
+/core/Cargo.lock
+/core/.env
 # Added by cargo
 #
 # already existing elements were commented out

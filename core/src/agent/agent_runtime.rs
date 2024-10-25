@@ -1,25 +1,47 @@
 use crate::agent::chat_agent::Agent;
 use crate::msg_types::*;
+use crate::msg_types::{chat_msg_types::ChatMessage, AgentId, SubscriptionId, TopicId};
+use crate::tool_types::{AgentType, Tool};
 use std::collections::{HashMap, HashSet};
-use crate::msg_types::{AgentId, TopicId,SubscriptionId, 
-chat_msg_types::ChatMessage,
-
-};
-use crate::tool_types::{Tool, AgentType};
 
 pub enum ChatMessageEnvelope {
-    SendMessageEnvelope(WrappedMessage),
-    ResponseMessageEnvelope(WrappedMessage),
-    PublishMessageEnvelope(WrappedMessage, String),
+    SendMessageEnvelope(SendMessage),
+    ResponseMessageEnvelope(ResponseMessage),
+    PublishMessageEnvelope(PublishMessage),
 }
 
-pub struct WrappedMessage {
+pub struct SendMessage {
     pub message: ChatMessage,
     pub sender: Option<AgentId>,
+    pub recepient: AgentId,
+    pub parent: Option<AgentId>,
+}
+pub struct ResponseMessage {
+    pub message: ChatMessage,
+    pub sender: AgentId,
     pub recepient: Option<AgentId>,
-    pub parent: Option<String>,
+}
+
+#[derive(Clone)]
+pub struct PublishMessage {
+    pub message: ChatMessage,
+    pub sender: Option<AgentId>,
+    pub topic_id: TopicId,
 }
 pub struct InterventionHanlder;
+
+impl InterventionHanlder {
+    pub fn on_send(self, message: ChatMessage, sender: Option<AgentId>, recepient: AgentId) {
+        todo!()
+    }
+    pub fn on_publish(self, message: ChatMessage, sender: Option<AgentId>) {
+        todo!()
+    }
+    pub fn on_response(self, message: ChatMessage, sender: AgentId, recepient: AgentId) {
+        todo!()
+    }
+}
+
 pub struct TraceProvider;
 
 pub enum RunState {
@@ -38,6 +60,7 @@ impl RunContext {
     pub fn stop_when_cancel(self) {}
 }
 
+#[derive(Eq, Hash, PartialEq, Clone)]
 pub struct Subscription {
     pub id: TopicId,
     pub subscription_id: SubscriptionId,
@@ -45,13 +68,14 @@ pub struct Subscription {
 
 impl Subscription {
     pub fn is_match(&self, topic_id: &TopicId) -> bool {
-        todo!()
+        &self.id == topic_id
     }
 
     pub fn map_to_agent(&self, topic_id: &TopicId) -> AgentId {
         todo!()
     }
 }
+
 pub struct SubscriptionManager {
     pub subscriptions: HashSet<Subscription>,
     pub seen_topics: HashSet<TopicId>,
@@ -59,31 +83,20 @@ pub struct SubscriptionManager {
 }
 
 impl SubscriptionManager {
-    pub async fn add_subscription(self, subscription: Subscription) {
-    //     let agent_id = subscription.map_to_agent(&self.id);
-    //     self.subscribed_recipients.insert(subscription);
-    
-    
+    pub async fn add_subscription(&mut self, subscription: Subscription) {
+        self.subscriptions.insert(subscription);
     }
 
-    pub async fn remove_subscription(self) {}
-
-    pub fn is_not_sub(self) -> bool {
-        todo!()
+    pub async fn remove_subscription(&mut self, id: SubscriptionId) {
+        self.subscriptions.retain(|sub| sub.id != id);
     }
 
-    pub async fn get_subscribed_recipients(self, topic: TopicId) -> Vec<AgentId> {
-        let mut res = self.subscribed_recipients.clone();
-        if !self.seen_topics.contains(&topic) {
-            res.remove(&topic);
+    pub async fn get_subscribed_recipients(&mut self, topic_id: TopicId) -> Vec<AgentId> {
+        if !self.seen_topics.contains(&topic_id) {
+            self.build_for_new_topic(topic_id);
         }
 
-        res.into_iter()
-            .map(|(_, v)| v.into_iter())
-            .flatten()
-            .collect::<HashSet<AgentId>>()
-            .into_iter()
-            .collect::<Vec<AgentId>>()
+        self.subscribed_recipients.get(&topic_id).unwrap().clone()
     }
 
     pub fn build_for_new_topic(&mut self, topic_id: TopicId) {
@@ -107,7 +120,7 @@ pub struct AgentRuntime {
     pub message_queue: Vec<ChatMessageEnvelope>,
     pub tool_store: HashMap<String, Func>,
     // pub agent_factories: HashMap<String, Agent>,
-    pub instantiated_agents: HashMap<String, Agent>,
+    pub instantiated_agents: HashMap<AgentId, Agent>,
     pub outstanding_tasks: i8,
     pub background_tasks: HashSet<String>,
     pub subscription_manager: SubscriptionManager,
@@ -133,38 +146,44 @@ impl AgentRuntime {
     //         .collect::<HashSet<String>>()
     // }
 
-    pub fn send_message(&mut self, message: ChatMessage, recepient: Option<AgentId>, sender: Option<AgentId>) {
+    pub fn send_message(
+        &mut self,
+        message: ChatMessage,
+        recepient: AgentId,
+        sender: Option<AgentId>,
+    ) {
         self.message_queue
-            .push(ChatMessageEnvelope::SendMessageEnvelope(WrappedMessage {
+            .push(ChatMessageEnvelope::SendMessageEnvelope(SendMessage {
                 sender: sender,
                 recepient: recepient,
                 message: message,
                 parent: None,
             }));
-            
     }
 
     pub fn publish_message(
         &mut self,
         message: ChatMessage,
         topic_id: TopicId,
-       sender : Option<AgentId>,
+        sender: Option<AgentId>,
     ) {
         self.message_queue
             .push(ChatMessageEnvelope::PublishMessageEnvelope(
-                WrappedMessage {
+                PublishMessage {
                     sender: sender,
-                    recepient: None,
                     message: message,
-                    parent: None,
+                    topic_id: topic_id,
                 },
-                topic_id.to_string(),
             ));
-            todo!()
+        todo!()
     }
 
-
-    pub async fn register(&self, typ: &str, agent_factory: HashMap<String, Tool>, subscriptions: Vec<String> ) {
+    pub async fn register(
+        &self,
+        typ: &str,
+        agent_factory: HashMap<String, Tool>,
+        subscriptions: Vec<String>,
+    ) {
         todo!()
     }
 
@@ -181,7 +200,98 @@ impl AgentRuntime {
     }
     pub fn save_state(self) {}
     pub fn load_state(self) {}
-    pub fn process_send(self, message_envelope: ChatMessageEnvelope) {}
+    pub async fn process_send(&mut self, message_envelope: SendMessage) {
+        let recepient = message_envelope.recepient;
+        let recepient_agent = self.get_agent(recepient).clone();
+        let message_context = ChatMessageContext {
+            sender: message_envelope.sender,
+            topic_id: None,
+            is_rpc: true,
+        };
+
+        let response: ResponseMessage = recepient_agent
+            .on_messages(message_envelope.message, message_context)
+            .await;
+
+        self.message_queue
+            .push(ChatMessageEnvelope::ResponseMessageEnvelope(
+                ResponseMessage {
+                    sender: response.sender,
+                    recepient: response.recepient,
+                    message: response.message,
+                },
+            ));
+
+        self.outstanding_tasks -= 1;
+    }
+
+    pub async fn process_publish(&mut self, message_envelope: PublishMessage) {
+        let recepients: Vec<AgentId> = self
+            .subscription_manager
+            .get_subscribed_recipients(message_envelope.topic_id)
+            .await;
+
+        for agent_id in recepients {
+            let message_context = ChatMessageContext {
+                sender: message_envelope.sender.clone(),
+                topic_id: None,
+                is_rpc: true,
+            };
+            let recepient_agent = self.get_agent(agent_id).clone();
+
+            let response: ResponseMessage = recepient_agent
+                .on_messages(message_envelope.message.clone(), message_context)
+                .await;
+
+            self.message_queue
+                .push(ChatMessageEnvelope::ResponseMessageEnvelope(
+                    ResponseMessage {
+                        sender: response.sender,
+                        recepient: response.recepient,
+                        message: response.message,
+                    },
+                ));
+            self.outstanding_tasks -= 1;
+        }
+    }
+
+    pub async fn process_response(&mut self, message_evelope: ChatMessageEnvelope) {
+        todo!()
+    }
+
+    pub async fn process_next(&mut self) {
+        if self.message_queue.len() == 0 {
+            return;
+        }
+
+        while let Some(me) = self.message_queue.pop() {
+            todo!()
+            // match me {
+            //     ChatMessageEnvelope::PublishMessageEnvelope(ref pme) => {
+            //         if let Some(handlers) = &self.intervention_handlers {
+            //             for handler in handlers {
+            //                 let _ = handler.on_publish(pme.message, pme.sender);
+            //             }
+            //         }
+            //     }
+            //     ChatMessageEnvelope::SendMessageEnvelope(sme) => {
+            //         if let Some(handlers) = self.intervention_handlers {
+            //             for handler in handlers {
+            //                 let _ = handler.on_send(sme.message, sme.sender, sme.recepient);
+            //             }
+            //         }
+            //     }
+            //     ChatMessageEnvelope::ResponseMessageEnvelope(rme) => {
+            //         if let Some(handlers) = self.intervention_handlers {
+            //             for handler in handlers {
+            //                 let _ = handler.on_response(rme.message, rme.sender, rme.recepient.unwrap());
+            //             }
+            //         }
+            //     }
+            // }
+        }
+    }
+    pub fn get_agent(&self, agent_id: AgentId) -> Agent {
+        self.instantiated_agents.get(&agent_id).unwrap().clone()
+    }
 }
-
-

@@ -22,6 +22,10 @@ uuid = {version="1.10", features=["v4"]}
 anyhow = {workspace = true}  
 serde.workspace = true
 ctor = "0.2.8"
+reqwest = "0.12.8"
+async-openai = "0.25.0"
+dotenv = "0.15.0"
+tokio = {version ="1.41.0", features=["full"]}
 
 [lints]
 rust = { unused_variables = "allow", dead_code = "allow" }

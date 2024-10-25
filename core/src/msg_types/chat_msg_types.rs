@@ -1,9 +1,12 @@
+use serde::{Deserialize, Serialize};
+
 use crate::msg_types::{
     AgentId, ContentData, Func, FunctionExecutionResult, GetContent, ImageContent,
     MultiModalContent, TextContent
 };
 use crate::tool_types::FunctionCallInput;
 
+#[derive(Clone)]
 pub enum ChatMessage {
     TextMessage(TextMessage),
     MultiModalMessage(MultiModalMessage),
@@ -32,33 +35,34 @@ impl GetContent for ChatMessage {
         }
     }
 }
-
+#[derive(Clone)]
 pub struct TextMessage {
     pub content: TextContent,
     pub source: AgentId,
 }
-
+#[derive(Clone)]
 pub struct MultiModalMessage {
     pub content: MultiModalContent,
     pub source: AgentId,
 }
-
+#[derive(Clone)]
 pub struct ToolCallMessage {
     pub content: ToolCallContent,
     pub source: AgentId,
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct ToolCallResultMessage {
     pub content: ToolCallResultContent,
     pub source: AgentId,
 }
 
+#[derive(Clone)]
 pub struct ToolCallContent {
     pub content: Vec<FunctionCallInput>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ToolCallResultContent {
     pub content: Vec<FunctionExecutionResult>,
 }
@@ -69,7 +73,7 @@ pub struct ChatMessageTrack {
     pub compression_rules: Func,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum AssistantMessageContent {
     FunctionCallInput(FunctionCallInput),
     TextContent(TextContent),

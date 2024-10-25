@@ -13,15 +13,24 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 use uuid::Uuid;
 
+use super::agent_runtime::ResponseMessage;
+
 pub static STORE: Lazy<Mutex<HashMap<String, Tool>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
+#[derive(Clone)]
 pub struct Agent {
     pub id: String,
     pub meta_data: String,
 }
 
 impl Agent {
-    async fn on_messages(self) {}
+    pub async fn on_messages(
+        self,
+        message: ChatMessage,
+        ctx: ChatMessageContext,
+    ) -> ResponseMessage {
+        todo!()
+    }
 
     pub fn save_state(self) {}
     pub fn load_state(self) {}
@@ -168,11 +177,11 @@ pub struct ChatCompletionAgent {
 impl ChatCompletionAgent {
     pub async fn on_message(&mut self, message: ChatMessage, ctx: ChatMessageContext) {
         let msg: LlmMessage = match message {
-            ChatMessage::TextMessage(tex) => LlmMessage::user_text(tex.content.text, ctx.sender),
+            ChatMessage::TextMessage(tex) => LlmMessage::user_text(tex.content.text, ctx.sender.unwrap()),
             ChatMessage::MultiModalMessage(mm) => match mm.content {
-                MultiModalContent::Text(tex) => LlmMessage::user_text(tex.text, ctx.sender),
+                MultiModalContent::Text(tex) => LlmMessage::user_text(tex.text, ctx.sender.unwrap()),
                 MultiModalContent::Image(img) => {
-                    LlmMessage::user_image(img.image.into(), ctx.sender)
+                    LlmMessage::user_image(img.image.into(), ctx.sender.unwrap())
                 }
             },
             ChatMessage::ToolCallMessage(tcm) => {
@@ -199,9 +208,9 @@ impl ChatCompletionAgent {
                     .map(|x| x.content.to_string())
                     .collect::<Vec<String>>()
                     .join(",");
-                LlmMessage::user_text(text, ctx.sender)
+                LlmMessage::user_text(text, ctx.sender.unwrap())
             }
-            ChatMessage::StopMessage(stp) => LlmMessage::user_text(stp, ctx.sender),
+            ChatMessage::StopMessage(stp) => LlmMessage::user_text(stp, ctx.sender.unwrap()),
         };
         self.model_context.add_message(msg).await;
     }
@@ -256,7 +265,7 @@ impl ChatCompletionAgent {
 
                 ChatMessage::TextMessage(TextMessage {
                     content: tc,
-                    source: ctx.sender,
+                    source: ctx.sender.unwrap(),
                 })
             }
             ResultContent::FunctionCallContent(fcc) => {
@@ -276,20 +285,20 @@ impl ChatCompletionAgent {
 
                 ChatMessage::ToolCallResultMessage(ToolCallResultMessage {
                     content: tcrm,
-                    source: ctx.sender,
+                    source: ctx.sender.unwrap(),
                 })
             }
             ResultContent::MultiModalContent(mmc) => {
                 match mmc {
                     MultiModalContent::Text(tc) => ChatMessage::TextMessage(TextMessage {
                         content: tc,
-                        source: ctx.sender,
+                        source: ctx.sender.unwrap(),
                     }),
 
                     MultiModalContent::Image(ic) => {
                         ChatMessage::MultiModalMessage(MultiModalMessage {
                             content: MultiModalContent::Image(ImageContent { image: ic.image }),
-                            source: ctx.sender,
+                            source: ctx.sender.unwrap(),
                         })
                     }
                 };

@@ -36,7 +36,7 @@ pub struct FunctionExecutionResultMessage {
 }
 
 impl LlmMessage {
-    pub fn system(content: impl Into<String>, source: impl Into<AgentId>) -> Self {
+    pub fn system(content: impl Into<String>, source: AgentId) -> Self {
         LlmMessage::SystemMessage(SystemMessage {
             content: TextContent {
                 text: content.into(),
@@ -45,7 +45,7 @@ impl LlmMessage {
         })
     }
 
-    pub fn user_text(content: impl Into<String>, source: impl Into<AgentId>) -> Self {
+    pub fn user_text(content: impl Into<String>, source: AgentId) -> Self {
         LlmMessage::UserMessage(UserMessage {
             content: MultiModalContent::Text(TextContent {
                 text: content.into(),
@@ -54,14 +54,14 @@ impl LlmMessage {
         })
     }
 
-    pub fn user_image(image_data: &'static [u8], source: impl Into<AgentId>) -> Self {
+    pub fn user_image(image_data: &'static [u8], source: AgentId) -> Self {
         LlmMessage::UserMessage(UserMessage {
             content: MultiModalContent::Image(ImageContent { image: image_data }),
             source: source.into(),
         })
     }
 
-    pub fn assistant_text(content: impl Into<String>, source: impl Into<AgentId>) -> Self {
+    pub fn assistant_text(content: impl Into<String>, source: AgentId) -> Self {
         LlmMessage::AssistantMessage(AssistantMessage {
             content: AssistantMessageContent::TextContent(TextContent {
                 text: content.into(),
@@ -70,10 +70,7 @@ impl LlmMessage {
         })
     }
 
-    pub fn assistant_function_run(
-        function_call: FunctionCallInput,
-        source: impl Into<AgentId>,
-    ) -> Self {
+    pub fn assistant_function_run(function_call: FunctionCallInput, source: AgentId) -> Self {
         LlmMessage::AssistantMessage(AssistantMessage {
             content: AssistantMessageContent::FunctionCallInput(function_call),
             source: source.into(),

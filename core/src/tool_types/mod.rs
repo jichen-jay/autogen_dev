@@ -2,7 +2,7 @@
 
 use ctor::ctor;
 use once_cell::sync::Lazy;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -23,7 +23,7 @@ impl std::fmt::Display for FunctionToolError {
 }
 
 impl std::error::Error for FunctionToolError {}
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FunctionCallInput {
     pub arguments_obj: Value,
     pub function_name: String,

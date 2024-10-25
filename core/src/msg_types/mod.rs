@@ -1,6 +1,7 @@
 pub mod chat_msg_types;
 pub mod llm_msg_types;
 
+use serde::{Deserialize, Serialize};
 use std::error::Error;
 use uuid::Uuid;
 
@@ -68,7 +69,7 @@ impl Clone for Box<dyn CloneableFn> {
 // Define your Func type alias
 pub type Func = Box<dyn CloneableFn>;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TextContent {
     pub text: String,
 }
@@ -155,7 +156,7 @@ pub struct CodeResult {
 }
 
 pub struct ChatMessageContext {
-    pub sender: AgentId,
-    pub topic_id: TopicId,
+    pub sender: Option<AgentId>,
+    pub topic_id: Option<TopicId>,
     pub is_rpc: bool,
 }
