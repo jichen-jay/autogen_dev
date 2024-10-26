@@ -3,6 +3,8 @@ use crate::msg_types::*;
 use crate::msg_types::{chat_msg_types::ChatMessage, AgentId, SubscriptionId, TopicId};
 use crate::tool_types::{AgentType, Tool};
 use std::collections::{HashMap, HashSet};
+use std::sync::{Arc, Mutex};
+use tokio::sync::mpsc::{self, Receiver, Sender};
 
 pub enum ChatMessageEnvelope {
     SendMessageEnvelope(SendMessage),
@@ -27,37 +29,6 @@ pub struct PublishMessage {
     pub message: ChatMessage,
     pub sender: Option<AgentId>,
     pub topic_id: TopicId,
-}
-pub struct InterventionHanlder;
-
-impl InterventionHanlder {
-    pub fn on_send(self, message: ChatMessage, sender: Option<AgentId>, recepient: AgentId) {
-        todo!()
-    }
-    pub fn on_publish(self, message: ChatMessage, sender: Option<AgentId>) {
-        todo!()
-    }
-    pub fn on_response(self, message: ChatMessage, sender: AgentId, recepient: AgentId) {
-        todo!()
-    }
-}
-
-pub struct TraceProvider;
-
-pub enum RunState {
-    Running = 0,
-    Cancelled = 1,
-    UntilIdle = 2,
-}
-pub struct RunContext {
-    pub run_state: RunState,
-}
-
-impl RunContext {
-    pub fn run(self) {}
-    pub fn stop(self) {}
-    pub fn stop_when_idle(self) {}
-    pub fn stop_when_cancel(self) {}
 }
 
 #[derive(Eq, Hash, PartialEq, Clone)]
@@ -114,17 +85,25 @@ impl SubscriptionManager {
     }
 }
 
+pub struct Counter {
+    count: i8,
+}
+
+impl Counter {
+    pub fn increment(&mut self) {
+        self.count += 1;
+    }
+    pub fn decrement(&mut self) {
+        self.count -= 1;
+    }
+}
 pub struct AgentRuntime {
-    pub intervention_handlers: Option<Vec<InterventionHanlder>>,
-    pub trace_provider: Option<TraceProvider>,
     pub message_queue: Vec<ChatMessageEnvelope>,
-    pub tool_store: HashMap<String, Func>,
-    // pub agent_factories: HashMap<String, Agent>,
+    pub tool_store: HashMap<String, Tool>,
     pub instantiated_agents: HashMap<AgentId, Agent>,
-    pub outstanding_tasks: i8,
+    pub outstanding_tasks: Counter,
     pub background_tasks: HashSet<String>,
     pub subscription_manager: SubscriptionManager,
-    pub run_context: RunContext,
 }
 
 impl AgentRuntime {
@@ -139,12 +118,9 @@ impl AgentRuntime {
             .collect::<HashSet<String>>()
     }
 
-    // pub fn known_agent_names(self) -> HashSet<String> {
-    //     self.agent_factories
-    //         .keys()
-    //         .map(String::from)
-    //         .collect::<HashSet<String>>()
-    // }
+    pub fn known_agent_names(self) -> HashSet<AgentId> {
+        todo!()
+    }
 
     pub fn send_message(
         &mut self,
@@ -175,31 +151,49 @@ impl AgentRuntime {
                     topic_id: topic_id,
                 },
             ));
-        todo!()
     }
-
     pub async fn register(
-        &self,
+        &mut self,
         typ: &str,
         agent_factory: HashMap<String, Tool>,
         subscriptions: Vec<String>,
     ) {
-        todo!()
+        // if self.instantiated_agents.contains_key(typ) {
+        //     println!("Error: Agent type {} already registered", typ);
+        //     return;
+        // }
+
+        let agent_id = new_agent_id();
+        let agent = Agent {
+            id: agent_id,
+            meta_data: "some data".to_string(),
+        };
+
+        self.instantiated_agents.insert(agent_id, agent);
     }
 
     pub async fn register_factory(&self, typ: AgentType, agent_factory: HashMap<String, Tool>) {
         todo!()
     }
 
-    pub async fn add_subscription(&self, subscription: SubscriptionId) {
-        todo!()
+    pub async fn add_subscription(&mut self, subscription: SubscriptionId) {
+        let new_subscription = Subscription {
+            id: new_topic_id(),
+            subscription_id: subscription,
+        };
+
+        self.subscription_manager
+            .add_subscription(new_subscription)
+            .await;
     }
 
     pub async fn remove_subscription(&mut self, id: SubscriptionId) {
-        todo!()
+        self.subscription_manager.remove_subscription(id).await;
     }
+
     pub fn save_state(self) {}
     pub fn load_state(self) {}
+
     pub async fn process_send(&mut self, message_envelope: SendMessage) {
         let recepient = message_envelope.recepient;
         let recepient_agent = self.get_agent(recepient).clone();
@@ -222,7 +216,7 @@ impl AgentRuntime {
                 },
             ));
 
-        self.outstanding_tasks -= 1;
+        self.outstanding_tasks.decrement();
     }
 
     pub async fn process_publish(&mut self, message_envelope: PublishMessage) {
@@ -251,7 +245,7 @@ impl AgentRuntime {
                         message: response.message,
                     },
                 ));
-            self.outstanding_tasks -= 1;
+            self.outstanding_tasks.decrement();
         }
     }
 
@@ -264,34 +258,229 @@ impl AgentRuntime {
             return;
         }
 
-        while let Some(me) = self.message_queue.pop() {
-            todo!()
-            // match me {
-            //     ChatMessageEnvelope::PublishMessageEnvelope(ref pme) => {
-            //         if let Some(handlers) = &self.intervention_handlers {
-            //             for handler in handlers {
-            //                 let _ = handler.on_publish(pme.message, pme.sender);
-            //             }
-            //         }
-            //     }
-            //     ChatMessageEnvelope::SendMessageEnvelope(sme) => {
-            //         if let Some(handlers) = self.intervention_handlers {
-            //             for handler in handlers {
-            //                 let _ = handler.on_send(sme.message, sme.sender, sme.recepient);
-            //             }
-            //         }
-            //     }
-            //     ChatMessageEnvelope::ResponseMessageEnvelope(rme) => {
-            //         if let Some(handlers) = self.intervention_handlers {
-            //             for handler in handlers {
-            //                 let _ = handler.on_response(rme.message, rme.sender, rme.recepient.unwrap());
-            //             }
-            //         }
-            //     }
-            // }
-        }
+        // while let Some(me) = self.message_queue.pop() {
+        //     self.outstanding_tasks.increment();
+        //     match me {
+        //         ChatMessageEnvelope::PublishMessageEnvelope(ref pme) => {
+        //             let task = tokio::spawn(self.process_publish(pme.clone()));
+        //             self.background_tasks
+        //                 .insert(format!("publish-task-{:?}", pme.topic_id));
+        //             task.await.unwrap();
+        //         }
+        //         ChatMessageEnvelope::SendMessageEnvelope(sme) => {
+        //             let task = tokio::spawn(self.process_send(sme));
+        //             self.background_tasks
+        //                 .insert(format!("send-task-{:?}", sme.recepient));
+        //             task.await.unwrap();
+        //             self.background_tasks
+        //                 .remove(&format!("send-task-{:?}", sme.recepient));
+        //         }
+        //         ChatMessageEnvelope::ResponseMessageEnvelope(rme) => {
+        //             let task = tokio::spawn(
+        //                 self.process_response(ChatMessageEnvelope::ResponseMessageEnvelope(rme)),
+        //             );
+        //             self.background_tasks
+        //                 .insert(format!("response-task-{:?}", rme.sender));
+        //             task.await.unwrap();
+        //             self.background_tasks
+        //                 .remove(&format!("response-task-{:?}", rme.sender));
+        //         }
+        //     }
+        // }
+        todo!()
     }
     pub fn get_agent(&self, agent_id: AgentId) -> Agent {
         self.instantiated_agents.get(&agent_id).unwrap().clone()
     }
+}
+
+//have made updates in previous code, update code below to make logic work
+// do you need the AgentMessage struct to pass message between agents?
+#[tokio::main]
+async fn main() {
+    let (runtime_tx, mut runtime_rx) = mpsc::channel(32);
+
+    // let (tx, rx) = mpsc::channel::<AgentMessage>(32);
+    let runtime = AgentRuntime {
+        message_queue: vec![],
+        tool_store: HashMap::<String, Tool>::new(),
+        instantiated_agents: HashMap::<AgentId, Agent>::new(),
+        outstanding_tasks: Counter { count: 0 },
+        background_tasks: HashSet::<String>::new(),
+        subscription_manager: SubscriptionManager {
+            subscriptions: HashSet::<Subscription>::new(),
+            seen_topics: HashSet::<TopicId>::new(),
+            subscribed_recipients: HashMap::<TopicId, Vec<AgentId>>::new(),
+        },
+    };
+
+    tokio::spawn(async move {
+        while let Some(message) = runtime_rx.recv().await {
+            match message {
+                AgentMessage::Send {
+                    sender,
+                    recipient,
+                    message,
+                    response_tx,
+                } => {
+                    if let Err(_) = runtime_tx
+                        .send(AgentMessage::Send {
+                            sender,
+                            recipient,
+                            message,
+                            response_tx,
+                        })
+                        .await
+                    {
+                        // Handle send error, e.g., agent might have stopped
+                        if let Err(_) = response_tx.send(Err("Agent not found".to_string())).await {
+                            // ...
+                        }
+                    }
+                }
+                AgentMessage::Publish {
+                    sender,
+                    topic,
+                    message,
+                } => {
+                    // Broadcast the message to all subscribed agents (not implemented here)
+                    println!("Publish not implemented:  {:?}", message);
+                }
+            }
+        }
+    });
+
+    // let runtime_task = tokio::spawn(runtime.run());
+
+    // Agent defined already:
+    //     #[derive(Clone)]
+    // pub struct Agent {
+    //     pub id: AgentId,
+    //     pub meta_data: String,
+    // }
+
+    // impl Agent {
+    //     pub async fn on_messages(
+    //         self,
+    //         message: ChatMessage,
+    //         ctx: ChatMessageContext,
+    //     ) -> ResponseMessage {
+    //         // ResponseMessage {
+    //         //     message: ChatMessage::Text {
+    //         //         content: format!("Response from Agent {}", self.id.0),
+    //         //     },
+    //         //     sender: self.id.clone(),
+    //         //     recepient: None,
+    //         // }
+    //         todo!()
+    //     }
+
+    //     pub fn save_state(self) {}
+    //     pub fn load_state(self) {}
+    // }
+    //need to properly construct Agents
+    let (tx, rx) = runtime.spawn_agent(Agent::new(AgentId::new("ChatAgent", "agent_id_1")));
+    let (tx, rx) = runtime.spawn_agent(Agent::new(AgentId::new("ChatAgent", "agent_id_2")));
+
+    // let (resp_tx, mut resp_rx) = mpsc::channel(1);
+    // tx.send(AgentMessage::Send {
+    //     sender: AgentId::new("sender_agent", "sender_agent_1"),
+    //     recipient: AgentId::new("ChatAgent", "agent_id_2"),
+    //     message: Box::new(ChatMessage::Text {
+    //         content: "Hello from Agent 1!".to_string(),
+    //     }),
+    //     response_tx: resp_tx,
+    // }).await.unwrap();
+
+    let topic_id = TopicId::new("topic_id_1");
+    // tx.send(AgentMessage::Publish {
+    //     sender: AgentId::new("sender_agent", "sender_agent_1"),
+    //     topic: topic_id.clone(),
+    //     message: Box::new(ChatMessage::Text {
+    //         content: "hello world".to_string(),
+    //     }),
+    // }).await.unwrap();
+
+    // if let Some(response) = resp_rx.recv().await {
+    //     match response {
+    //         Ok(msg) => println!("Received response: {:?}", msg),
+    //         Err(err) => println!("Error sending message: {}", err),
+    //     }
+    // }
+
+    // runtime_task.await.unwrap();
+    loop {
+        // Poll for background tasks
+        // let background_tasks = runtime.background_tasks.clone();
+        // if background_tasks.is_empty() {
+        //     break;
+        // }
+
+        // println!(
+        //     "{:?} pending bg tasks: {:?}/{:?}",
+        //     runtime.run_context.run_state,
+        //     runtime.outstanding_tasks,
+        //     runtime.background_tasks
+        // );
+
+        runtime.process_next().await
+    }
+}
+
+impl AgentRuntime {
+    pub fn spawn_agent(&self, agent: Agent) -> (Sender<AgentMessage>, Receiver<AgentMessage>) {
+        let (tx, rx) = mpsc::channel(32);
+        let id = agent.get_id();
+        let mut agents = self.instantiated_agents.clone();
+        agents.insert(id.clone(), agent);
+        self.instantiated_agents = agents;
+
+        tokio::spawn(async move {
+            let mut rx = rx;
+            while let Some(message) = rx.recv().await {
+                match message {
+                    AgentMessage::Send {
+                        sender,
+                        message,
+                        response_tx,
+                        ..
+                    } => {
+                        let response = agent
+                            .on_messages(
+                                message,
+                                ChatMessageContext {
+                                    sender: sender,
+                                    topic_id: None,
+                                    is_rpc: true,
+                                },
+                            )
+                            .await;
+                        if let Err(_) = response_tx.send(response).await {
+                            // Handle the error (e.g., the sender might no longer be waiting for a response)
+                        }
+                    }
+                    _ => {
+                        // Handle other message types if needed
+                    }
+                };
+            }
+        });
+
+        (tx, rx)
+    }
+}
+
+#[derive(Debug)]
+enum AgentMessage {
+    Send {
+        sender: AgentId,
+        recipient: AgentId,
+        message: ChatMessage, // Boxed for dynamic dispatch
+        response_tx: Sender<Result<ResponseMessage, String>>, // For sending back responses
+    },
+    Publish {
+        sender: AgentId,
+        topic: String,
+        message: ChatMessage,
+    },
 }

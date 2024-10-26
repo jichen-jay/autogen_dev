@@ -5,7 +5,9 @@ use crate::msg_types::{
     chat_msg_types::ChatMessage, llm_msg_types::LlmMessage, ChatMessageContext, CodeBlock,
     CodeResult, FinishReason, MultiModalContent, RequestUsage, ResponseFormat, TextContent,
 };
-use crate::msg_types::{new_agent_id, new_topic_id, FunctionExecutionResult, ImageContent};
+use crate::msg_types::{
+    new_agent_id, new_topic_id, AgentId, FunctionExecutionResult, ImageContent,
+};
 use crate::tool_types::{FunctionCallInput, Tool};
 use once_cell::sync::Lazy;
 use serde_json::Value;
@@ -19,7 +21,7 @@ pub static STORE: Lazy<Mutex<HashMap<String, Tool>>> = Lazy::new(|| Mutex::new(H
 
 #[derive(Clone)]
 pub struct Agent {
-    pub id: String,
+    pub id: AgentId,
     pub meta_data: String,
 }
 
@@ -29,6 +31,13 @@ impl Agent {
         message: ChatMessage,
         ctx: ChatMessageContext,
     ) -> ResponseMessage {
+        // ResponseMessage {
+        //     message: ChatMessage::Text {
+        //         content: format!("Response from Agent {}", self.id.0),
+        //     },
+        //     sender: self.id.clone(),
+        //     recepient: None,
+        // }
         todo!()
     }
 
@@ -177,9 +186,13 @@ pub struct ChatCompletionAgent {
 impl ChatCompletionAgent {
     pub async fn on_message(&mut self, message: ChatMessage, ctx: ChatMessageContext) {
         let msg: LlmMessage = match message {
-            ChatMessage::TextMessage(tex) => LlmMessage::user_text(tex.content.text, ctx.sender.unwrap()),
+            ChatMessage::TextMessage(tex) => {
+                LlmMessage::user_text(tex.content.text, ctx.sender.unwrap())
+            }
             ChatMessage::MultiModalMessage(mm) => match mm.content {
-                MultiModalContent::Text(tex) => LlmMessage::user_text(tex.text, ctx.sender.unwrap()),
+                MultiModalContent::Text(tex) => {
+                    LlmMessage::user_text(tex.text, ctx.sender.unwrap())
+                }
                 MultiModalContent::Image(img) => {
                     LlmMessage::user_image(img.image.into(), ctx.sender.unwrap())
                 }
