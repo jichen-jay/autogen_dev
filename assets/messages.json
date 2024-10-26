@@ -1,0 +1,18 @@
+[
+    {
+        "role": "system",
+        "content": "You're an AI artist."
+    },
+    {
+        "role": "user",
+        "content": [
+            {
+                "type": "image"
+            },
+            {
+                "type": "text",
+                "text": "What is in this image?"
+            }
+        ]
+    }
+]
