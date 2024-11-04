@@ -7,18 +7,60 @@ use uuid::Uuid;
 
 use crate::tool_types::SupportedType;
 
-pub type AgentId = Uuid;
-pub type TopicId = Uuid;
-pub type SubscriptionId = Uuid;
-
 // pub type Func = Box<dyn Fn(&[u8]) -> Result<String, Box<dyn Error>> + Send + Sync>;
 
-pub fn new_agent_id() -> AgentId {
-    Uuid::new_v4()
+use base64::{
+    alphabet::STANDARD,
+    engine::{general_purpose::NO_PAD, GeneralPurpose},
+    Engine,
+};
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AgentId(String);
+
+impl AgentId {
+    pub fn new(text: Option<&str>) -> Self {
+        match text {
+            Some(tex) => {
+                let encoded = GeneralPurpose::new(&STANDARD, NO_PAD).encode(tex);
+                let padded = format!("{:0<36}", encoded); // Pad with zeros
+                AgentId(padded)
+            }
+            None => AgentId(Uuid::new_v4().to_string()),
+        }
+    }
+
+    pub fn get_text(&self) -> Option<String> {
+        GeneralPurpose::new(&STANDARD, NO_PAD)
+            .decode(self.0.as_bytes())
+            .ok()
+            .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
+    }
 }
 
-pub fn new_topic_id() -> TopicId {
-    Uuid::new_v4()
+pub type SubscriptionId = Uuid;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TopicId(String);
+
+impl TopicId {
+    pub fn new(text: Option<&str>) -> Self {
+        match text {
+            Some(tex) => {
+                let encoded = GeneralPurpose::new(&STANDARD, NO_PAD).encode(tex);
+                let padded = format!("{:0<36}", encoded); // Pad with zeros
+                TopicId(padded)
+            }
+            None => TopicId(Uuid::new_v4().to_string()),
+        }
+    }
+
+    pub fn get_text(&self) -> Option<String> {
+        GeneralPurpose::new(&STANDARD, NO_PAD)
+            .decode(self.0.as_bytes())
+            .ok()
+            .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
+    }
 }
 
 pub fn new_subscription_id() -> SubscriptionId {

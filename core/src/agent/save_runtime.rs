@@ -13,13 +13,13 @@ pub enum ChatMessageEnvelope {
 pub struct SendMessage {
     pub message: ChatMessage,
     pub sender: Option<AgentId>,
-    pub recepient: AgentId,
+    pub recipient: AgentId,
     pub parent: Option<AgentId>,
 }
 pub struct ResponseMessage {
     pub message: ChatMessage,
     pub sender: AgentId,
-    pub recepient: Option<AgentId>,
+    pub recipient: Option<AgentId>,
 }
 
 #[derive(Clone)]
@@ -31,13 +31,13 @@ pub struct PublishMessage {
 pub struct InterventionHanlder;
 
 impl InterventionHanlder {
-    pub fn on_send(self, message: ChatMessage, sender: Option<AgentId>, recepient: AgentId) {
+    pub fn on_send(self, message: ChatMessage, sender: Option<AgentId>, recipient: AgentId) {
         todo!()
     }
     pub fn on_publish(self, message: ChatMessage, sender: Option<AgentId>) {
         todo!()
     }
-    pub fn on_response(self, message: ChatMessage, sender: AgentId, recepient: AgentId) {
+    pub fn on_response(self, message: ChatMessage, sender: AgentId, recipient: AgentId) {
         todo!()
     }
 }
@@ -149,13 +149,13 @@ impl AgentRuntime {
     pub fn send_message(
         &mut self,
         message: ChatMessage,
-        recepient: AgentId,
+        recipient: AgentId,
         sender: Option<AgentId>,
     ) {
         self.message_queue
             .push(ChatMessageEnvelope::SendMessageEnvelope(SendMessage {
                 sender: sender,
-                recepient: recepient,
+                recipient: recipient,
                 message: message,
                 parent: None,
             }));
@@ -201,15 +201,15 @@ impl AgentRuntime {
     pub fn save_state(self) {}
     pub fn load_state(self) {}
     pub async fn process_send(&mut self, message_envelope: SendMessage) {
-        let recepient = message_envelope.recepient;
-        let recepient_agent = self.get_agent(recepient).clone();
+        let recipient = message_envelope.recipient;
+        let recipient_agent = self.get_agent(recipient).clone();
         let message_context = ChatMessageContext {
             sender: message_envelope.sender,
             topic_id: None,
             is_rpc: true,
         };
 
-        let response: ResponseMessage = recepient_agent
+        let response: ResponseMessage = recipient_agent
             .on_messages(message_envelope.message, message_context)
             .await;
 
@@ -217,7 +217,7 @@ impl AgentRuntime {
             .push(ChatMessageEnvelope::ResponseMessageEnvelope(
                 ResponseMessage {
                     sender: response.sender,
-                    recepient: response.recepient,
+                    recipient: response.recipient,
                     message: response.message,
                 },
             ));
@@ -226,20 +226,20 @@ impl AgentRuntime {
     }
 
     pub async fn process_publish(&mut self, message_envelope: PublishMessage) {
-        let recepients: Vec<AgentId> = self
+        let recipients: Vec<AgentId> = self
             .subscription_manager
             .get_subscribed_recipients(message_envelope.topic_id)
             .await;
 
-        for agent_id in recepients {
+        for agent_id in recipients {
             let message_context = ChatMessageContext {
                 sender: message_envelope.sender.clone(),
                 topic_id: None,
                 is_rpc: true,
             };
-            let recepient_agent = self.get_agent(agent_id).clone();
+            let recipient_agent = self.get_agent(agent_id).clone();
 
-            let response: ResponseMessage = recepient_agent
+            let response: ResponseMessage = recipient_agent
                 .on_messages(message_envelope.message.clone(), message_context)
                 .await;
 
@@ -247,7 +247,7 @@ impl AgentRuntime {
                 .push(ChatMessageEnvelope::ResponseMessageEnvelope(
                     ResponseMessage {
                         sender: response.sender,
-                        recepient: response.recepient,
+                        recipient: response.recipient,
                         message: response.message,
                     },
                 ));
@@ -277,14 +277,14 @@ impl AgentRuntime {
             //     ChatMessageEnvelope::SendMessageEnvelope(sme) => {
             //         if let Some(handlers) = self.intervention_handlers {
             //             for handler in handlers {
-            //                 let _ = handler.on_send(sme.message, sme.sender, sme.recepient);
+            //                 let _ = handler.on_send(sme.message, sme.sender, sme.recipient);
             //             }
             //         }
             //     }
             //     ChatMessageEnvelope::ResponseMessageEnvelope(rme) => {
             //         if let Some(handlers) = self.intervention_handlers {
             //             for handler in handlers {
-            //                 let _ = handler.on_response(rme.message, rme.sender, rme.recepient.unwrap());
+            //                 let _ = handler.on_response(rme.message, rme.sender, rme.recipient.unwrap());
             //             }
             //         }
             //     }

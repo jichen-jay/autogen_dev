@@ -6,7 +6,7 @@ use crate::msg_types::{
 };
 use crate::tool_types::FunctionCallInput;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum ChatMessage {
     TextMessage(TextMessage),
     MultiModalMessage(MultiModalMessage),
@@ -35,17 +35,17 @@ impl GetContent for ChatMessage {
         }
     }
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TextMessage {
     pub content: TextContent,
     pub source: AgentId,
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct MultiModalMessage {
     pub content: MultiModalContent,
     pub source: AgentId,
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ToolCallMessage {
     pub content: ToolCallContent,
     pub source: AgentId,
@@ -57,7 +57,7 @@ pub struct ToolCallResultMessage {
     pub source: AgentId,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ToolCallContent {
     pub content: Vec<FunctionCallInput>,
 }

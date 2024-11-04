@@ -36,7 +36,7 @@ impl Agent {
         //         content: format!("Response from Agent {}", self.id.0),
         //     },
         //     sender: self.id.clone(),
-        //     recepient: None,
+        //     recipient: None,
         // }
         todo!()
     }
