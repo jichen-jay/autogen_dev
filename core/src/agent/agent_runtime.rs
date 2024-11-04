@@ -343,16 +343,16 @@ async fn main() {
         },
     };
 
-    let chat_tools = HashMap::new(); //  Tools associated with the ChatAgent
+    let chat_tools = HashMap::new(); //  Tools associated with the BaseAgent
     let chat_subscriptions = vec![new_topic_id("general_topic")];
     runtime
-        .register("ChatAgent", chat_tools, chat_subscriptions)
+        .register("BaseAgent", chat_tools, chat_subscriptions)
         .await;
 
     let message = ChatMessage::Text {
-        content: "Hello, ChatAgent!".to_string(),
+        content: "Hello, BaseAgent!".to_string(),
     };
-    let chat_agent_id = AgentId::new("ChatAgent", "agent_ChatAgent".to_string());
+    let chat_agent_id = AgentId::new("BaseAgent", "agent_BaseAgent".to_string());
     runtime.send_message(message, chat_agent_id, None);
 
     let topic = TopicId::new("general_topic");

@@ -5,9 +5,7 @@ use crate::msg_types::{
     chat_msg_types::ChatMessage, llm_msg_types::LlmMessage, ChatMessageContext, CodeBlock,
     CodeResult, FinishReason, MultiModalContent, RequestUsage, ResponseFormat, TextContent,
 };
-use crate::msg_types::{
-    new_agent_id, new_topic_id, AgentId, FunctionExecutionResult, ImageContent,
-};
+use crate::msg_types::{AgentId, FunctionExecutionResult, ImageContent};
 use crate::tool_types::{FunctionCallInput, Tool};
 use once_cell::sync::Lazy;
 use serde_json::Value;
@@ -22,56 +20,65 @@ pub static STORE: Lazy<Mutex<HashMap<String, Tool>>> = Lazy::new(|| Mutex::new(H
 #[derive(Clone)]
 pub struct Agent {
     pub id: AgentId,
-    pub meta_data: String,
+    pub description: String,
 }
 
 impl Agent {
-    pub async fn on_messages(
+    pub async fn on_messages( 
         self,
         message: ChatMessage,
         ctx: ChatMessageContext,
     ) -> ResponseMessage {
-        // ResponseMessage {
-        //     message: ChatMessage::Text {
-        //         content: format!("Response from Agent {}", self.id.0),
-        //     },
-        //     sender: self.id.clone(),
-        //     recipient: None,
-        // }
         todo!()
     }
 
     pub fn save_state(self) {}
     pub fn load_state(self) {}
 }
-pub struct BaseChatAgent {
+pub struct BaseAgent {
     pub name: String,
     pub description: String,
-    pub model_client: Option<ChatCompletionClient>,
-    pub system_message: Option<String>,
     pub model_context: Option<Vec<ChatMessage>>,
     pub code_exec_engine: Option<Engine>,
-    pub tool_schema: Option<Vec<Schema>>,
+    pub tool_schema: Option<Vec<Value>>,
     pub registered_tools: Option<Vec<Tool>>,
 }
 
-pub struct Schema;
-
 pub struct Engine;
 
-impl BaseChatAgent {
+impl BaseAgent {
     async fn on_messages(self, messages: ChatMessage) -> ChatMessage {
         todo!()
     }
 }
-
-pub trait ToolUse<BaseChatAgent> {
-    fn registered_tools(self) -> Vec<Tool>;
+pub struct ToolUseAgent {
+    pub name: String,
+    pub description: String,
+    pub model_context: Option<Vec<ChatMessage>>,
+    pub code_exec_engine: Option<Engine>,
+    pub tool_schema: Option<Vec<Value>>,
+    pub registered_tools: Option<Vec<Tool>>,
 }
 
-pub trait CodeExecute<BaseChatAgent> {
-    //need to add the engine for code execution
-    fn execute_code_blocks(self, code_blocks: Vec<CodeBlock>) -> CodeResult;
+impl ToolUseAgent {
+    fn registered_tools(self) -> Vec<Tool> {
+        todo!()
+    }
+}
+
+pub struct CodeExecAgent {
+    pub name: String,
+    pub description: String,
+    pub model_context: Option<Vec<ChatMessage>>,
+    pub code_exec_engine: Option<Engine>,
+    pub tool_schema: Option<Vec<Value>>,
+    pub registered_tools: Option<Vec<Tool>>,
+}
+
+impl CodeExecAgent {
+    fn execute_code_blocks(self, code_blocks: Vec<CodeBlock>) -> CodeResult {
+        todo!()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -98,13 +105,6 @@ impl ChatCompletionContext {
     pub fn load_state(self, state: HashMap<String, LlmMessage>) {
         todo!()
     }
-}
-pub trait CodeAssist<BaseChatAgent> {
-    //    async fn on_messages(self, messages: Vec<Message>) -> ChatMessage;
-    fn on_messages(
-        self,
-        messages: Vec<ChatMessage>,
-    ) -> impl std::future::Future<Output = ChatMessage> + Send;
 }
 
 pub enum ResultContent {
@@ -176,6 +176,7 @@ pub struct PublishNow {
 pub struct Reset;
 
 pub struct ChatCompletionAgent {
+    pub name: String,
     pub description: String,
     pub model_client: ChatCompletionClient,
     pub system_message: Vec<LlmMessage>,
