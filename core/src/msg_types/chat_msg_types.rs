@@ -35,6 +35,11 @@ impl GetContent for ChatMessage {
         }
     }
 }
+
+
+
+
+
 #[derive(Clone, Debug)]
 pub struct TextMessage {
     pub content: TextContent,

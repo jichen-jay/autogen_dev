@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fs, path::Path};
 
 use crate::agent::llm_backend::{LlmConfig, TOGETHER_VISION_CONFIG};
-use crate::msg_types::{llm_msg_types::LlmMessage, new_agent_id, RequestUsage};
+use crate::msg_types::{llm_msg_types::LlmMessage, RequestUsage, AgentId};
 use base64::engine::{general_purpose, Engine as _};
 use dotenv::dotenv;
 use reqwest::{
@@ -165,7 +165,7 @@ pub fn output_llmmessage(res_obj: CreateChatCompletionResponseExt) -> Option<Llm
     let msg_obj = res_obj.choices[0].message.clone();
     if let Some(data) = msg_obj.content {
         // If no XML-like structure is found, treat the content as assistant text
-        return Some(LlmMessage::assistant_text(data.clone(), new_agent_id()));
+        return Some(LlmMessage::assistant_text(data.clone(), AgentId::new(Some("hold"))));
     }
     None
 }

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::agent::llm_backend::{LlmConfig, TOGETHER_CONFIG};
-use crate::msg_types::{llm_msg_types::LlmMessage, new_agent_id, RequestUsage};
+use crate::msg_types::{llm_msg_types::LlmMessage, RequestUsage, AgentId};
 use crate::tool_types::FunctionCallInput;
 
 // Define custom FinishReason to include 'eos'
@@ -183,7 +183,7 @@ pub async fn chat_wrapper_llama(
 
             let llm_message = LlmMessage::assistant_text(
                 raw_output.choices[0].clone().message.content.unwrap(),
-                new_agent_id(),
+                AgentId::new(Some("hold")),
             );
 
             Ok((llm_message, usage))
@@ -239,17 +239,17 @@ pub fn output_llmmessage(res_obj: CreateChatCompletionResponseExt) -> Option<Llm
                     };
                     return Some(LlmMessage::assistant_function_run(
                         function_call_input,
-                        new_agent_id(),
+                        AgentId::new(Some("hold")),
                     ));
                 }
                 None => {
                     // If no tool call is extracted, treat the content as assistant text
-                    return Some(LlmMessage::assistant_text(data.clone(), new_agent_id()));
+                    return Some(LlmMessage::assistant_text(data.clone(), AgentId::new(Some("hold"))));
                 }
             }
         } else {
             // If no XML-like structure is found, treat the content as assistant text
-            return Some(LlmMessage::assistant_text(data.clone(), new_agent_id()));
+            return Some(LlmMessage::assistant_text(data.clone(), AgentId::new(Some("hold"))));
         }
     }
     None

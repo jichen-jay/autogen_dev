@@ -23,7 +23,7 @@ impl AgentId {
         match text {
             Some(tex) => {
                 let encoded = GeneralPurpose::new(&STANDARD, NO_PAD).encode(tex);
-                let padded = format!("{:0<36}", encoded); // Pad with zeros
+                let padded = encoded[..36].to_string();
                 AgentId(padded)
             }
             None => AgentId(Uuid::new_v4().to_string()),
@@ -48,13 +48,12 @@ impl TopicId {
         match text {
             Some(tex) => {
                 let encoded = GeneralPurpose::new(&STANDARD, NO_PAD).encode(tex);
-                let padded = format!("{:0<36}", encoded); // Pad with zeros
+                let padded = encoded[..36].to_string();
                 TopicId(padded)
             }
             None => TopicId(Uuid::new_v4().to_string()),
         }
     }
-
     pub fn get_text(&self) -> Option<String> {
         GeneralPurpose::new(&STANDARD, NO_PAD)
             .decode(self.0.as_bytes())
@@ -78,16 +77,12 @@ impl std::fmt::Display for FunctionToolError {
 
 impl Error for FunctionToolError {}
 
-// Parsing functions as before...
-
-// Now define the CloneableFn trait without inheriting Clone
 pub trait CloneableFn:
     Fn(&[SupportedType]) -> Result<String, Box<dyn Error + Send + Sync>> + Send + Sync
 {
     fn clone_box(&self) -> Box<dyn CloneableFn>;
 }
 
-// Implement CloneableFn for all suitable types
 impl<T> CloneableFn for T
 where
     T: Fn(&[SupportedType]) -> Result<String, Box<dyn Error + Send + Sync>>
@@ -101,14 +96,12 @@ where
     }
 }
 
-// Implement Clone for Box<dyn CloneableFn>
 impl Clone for Box<dyn CloneableFn> {
     fn clone(&self) -> Box<dyn CloneableFn> {
         self.clone_box()
     }
 }
 
-// Define your Func type alias
 pub type Func = Box<dyn CloneableFn>;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -116,15 +109,29 @@ pub struct TextContent {
     pub text: String,
 }
 
-impl GetContent for TextContent {
-    fn get_content(&self) -> ContentData<'_> {
-        ContentData::Text(self.text.clone())
+impl<T: ToString> From<T> for TextContent {
+    fn from(text: T) -> Self {
+        TextContent {
+            text: text.to_string(),
+        }
+    }
+}
+
+impl From<&'static [u8]> for ImageContent {
+    fn from(image: &'static [u8]) -> Self {
+        ImageContent { image }
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct ImageContent {
     pub image: &'static [u8],
+}
+
+impl GetContent for TextContent {
+    fn get_content(&self) -> ContentData<'_> {
+        ContentData::Text(self.text.clone())
+    }
 }
 
 impl GetContent for ImageContent {
@@ -158,6 +165,15 @@ impl GetContent for Content {
     }
 }
 
+impl GetContent for MultiModalContent {
+    fn get_content(&self) -> ContentData<'_> {
+        match self {
+            MultiModalContent::Text(t) => t.get_content(),
+            MultiModalContent::Image(i) => i.get_content(),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum MultiModalContent {
     Text(TextContent),
@@ -167,7 +183,7 @@ pub enum MultiModalContent {
 #[derive(Debug, Clone)]
 pub struct FunctionExecutionResult {
     pub content: String,
-    pub call_id: String,
+    pub call_id: TopicId,
 }
 
 #[derive(PartialEq)]
@@ -198,7 +214,7 @@ pub struct CodeResult {
 }
 
 pub struct ChatMessageContext {
-    pub sender: Option<AgentId>,
-    pub topic_id: Option<TopicId>,
+    pub sender: AgentId,
+    pub topic_id: TopicId,
     pub is_rpc: bool,
 }

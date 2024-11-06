@@ -5,89 +5,22 @@ use crate::msg_types::{
     chat_msg_types::ChatMessage, llm_msg_types::LlmMessage, ChatMessageContext, CodeBlock,
     CodeResult, FinishReason, MultiModalContent, RequestUsage, ResponseFormat, TextContent,
 };
-use crate::msg_types::{AgentId, FunctionExecutionResult, ImageContent};
+use crate::msg_types::{AgentId, FunctionExecutionResult, ImageContent, TopicId};
 use crate::tool_types::{FunctionCallInput, Tool};
 use once_cell::sync::Lazy;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Mutex;
-use uuid::Uuid;
-
-use super::agent_runtime::ResponseMessage;
 
 pub static STORE: Lazy<Mutex<HashMap<String, Tool>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
-#[derive(Clone)]
-pub struct Agent {
-    pub id: AgentId,
-    pub description: String,
-}
-
-impl Agent {
-    pub async fn on_messages( 
-        self,
-        message: ChatMessage,
-        ctx: ChatMessageContext,
-    ) -> ResponseMessage {
-        todo!()
-    }
-
-    pub fn save_state(self) {}
-    pub fn load_state(self) {}
-}
-pub struct BaseAgent {
-    pub name: String,
-    pub description: String,
-    pub model_context: Option<Vec<ChatMessage>>,
-    pub code_exec_engine: Option<Engine>,
-    pub tool_schema: Option<Vec<Value>>,
-    pub registered_tools: Option<Vec<Tool>>,
-}
-
-pub struct Engine;
-
-impl BaseAgent {
-    async fn on_messages(self, messages: ChatMessage) -> ChatMessage {
-        todo!()
-    }
-}
-pub struct ToolUseAgent {
-    pub name: String,
-    pub description: String,
-    pub model_context: Option<Vec<ChatMessage>>,
-    pub code_exec_engine: Option<Engine>,
-    pub tool_schema: Option<Vec<Value>>,
-    pub registered_tools: Option<Vec<Tool>>,
-}
-
-impl ToolUseAgent {
-    fn registered_tools(self) -> Vec<Tool> {
-        todo!()
-    }
-}
-
-pub struct CodeExecAgent {
-    pub name: String,
-    pub description: String,
-    pub model_context: Option<Vec<ChatMessage>>,
-    pub code_exec_engine: Option<Engine>,
-    pub tool_schema: Option<Vec<Value>>,
-    pub registered_tools: Option<Vec<Tool>>,
-}
-
-impl CodeExecAgent {
-    fn execute_code_blocks(self, code_blocks: Vec<CodeBlock>) -> CodeResult {
-        todo!()
-    }
-}
-
 #[derive(Debug, Clone)]
-pub struct ChatCompletionContext {
+pub struct LlmCompletionContext {
     pub messages: Vec<LlmMessage>,
     pub state: HashMap<String, Vec<LlmMessage>>,
 }
 
-impl ChatCompletionContext {
+impl LlmCompletionContext {
     pub async fn add_message(&mut self, message: LlmMessage) {
         self.messages.push(message);
     }
@@ -99,11 +32,212 @@ impl ChatCompletionContext {
     }
 
     pub fn save_state(&mut self) -> HashMap<String, LlmMessage> {
-        // self.state.insert("placeholder".to_string(), self.messages.clone());
         todo!()
     }
     pub fn load_state(self, state: HashMap<String, LlmMessage>) {
         todo!()
+    }
+}
+
+pub struct Agent {
+    pub name: String,
+    pub description: String,
+    pub chat_context: Vec<ChatMessage>,
+}
+
+pub struct ToolUseAgent {
+    pub agent_base: Agent,
+    pub llm_context: LlmCompletionContext,
+    pub tool_schema: Vec<Value>,
+    pub registered_tools: Vec<Tool>,
+}
+
+pub struct LlmCompletionAgent {
+    pub agent_base: Agent,
+    pub llm_context: LlmCompletionContext,
+    pub model_client: LlmCompletionClient,
+    pub system_messages: Vec<LlmMessage>,
+    pub tool_schema: Vec<Value>,
+    pub registered_tools: Vec<Tool>,
+}
+
+pub struct CodeExecAgent {
+    pub agent_base: Agent,
+    pub llm_context: LlmCompletionContext,
+    pub code_exec_engine: Engine,
+}
+
+pub struct Engine;
+
+impl Agent {
+    pub async fn on_message(&mut self, message: ChatMessage) -> ChatMessage {
+        todo!()
+    }
+
+    pub async fn custom_base_agent_logic(in_agent: AgentId, input: &str) -> (AgentId, &str) {
+        todo!()
+    }
+
+    pub fn registered_tools(&self) -> Vec<Tool> {
+        todo!()
+    }
+}
+
+impl ToolUseAgent {
+    pub async fn on_message(&mut self, message: ChatMessage) -> ChatMessage {
+        todo!()
+    }
+
+    pub async fn custom_base_agent_logic(in_agent: AgentId, input: &str) -> (AgentId, &str) {
+        todo!()
+    }
+
+    pub fn registered_tools(&self) -> Vec<Tool> {
+        todo!()
+    }
+}
+
+impl CodeExecAgent {
+    pub fn execute_code_blocks(&self, code_blocks: Vec<CodeBlock>) -> CodeResult {
+        todo!()
+    }
+}
+
+impl LlmCompletionAgent {
+    async fn on_message(&mut self, message: ChatMessage, ctx: ChatMessageContext) {
+        let msg: LlmMessage = match message {
+            ChatMessage::TextMessage(tex) => {
+                LlmMessage::user_text(tex.content.text, ctx.sender)
+            }
+            ChatMessage::MultiModalMessage(mm) => match mm.content {
+                MultiModalContent::Text(tex) => {
+                    LlmMessage::user_text(tex.text, ctx.sender)
+                }
+                MultiModalContent::Image(img) => {
+                    LlmMessage::user_image(img.image.into(), ctx.sender)
+                }
+            },
+            ChatMessage::ToolCallMessage(tcm) => {
+                let mut res = Vec::<String>::new();
+                for fc in tcm.content.content {
+                    let func_name = fc.function_name;
+                    let arguments_w_val = fc.arguments_obj;
+
+                    let binding = STORE.lock().unwrap();
+                    let func = binding.get(&func_name).unwrap();
+                    let raw_result: String = func.run(arguments_w_val).expect("failed run");
+
+                    res.push(raw_result);
+                }
+                let call_id = TopicId::new(Some("placeholder"));
+                let source = AgentId::new(Some("placehlder"));
+                LlmMessage::function_result(res.join(", "), call_id, source)
+            }
+            ChatMessage::ToolCallResultMessage(tcrm) => {
+                let text = tcrm
+                    .content
+                    .content
+                    .into_iter()
+                    .map(|x| x.content.to_string())
+                    .collect::<Vec<String>>()
+                    .join(",");
+                LlmMessage::user_text(text, ctx.sender)
+            }
+            ChatMessage::StopMessage(stp) => LlmMessage::user_text(stp, ctx.sender),
+        };
+        self.llm_context.add_message(msg).await;
+    }
+
+    async fn on_reset(&mut self, message: Reset, ctx: ChatMessageContext) {
+        self.llm_context.clear().await;
+    }
+
+    async fn on_response_now(
+        &mut self,
+        message: ResponseNow,
+        ctx: ChatMessageContext,
+    ) -> ChatMessage {
+        let response = self.generate_response(message.response_format, ctx).await;
+
+        response
+    }
+
+    async fn on_publish_now(
+        &mut self,
+        message: PublishNow,
+        ctx: ChatMessageContext,
+    ) -> ChatMessage {
+        let response = self.generate_response(message.response_format, ctx).await;
+
+        response
+    }
+
+    async fn generate_response(
+        &mut self,
+        response_format: ResponseFormat,
+        ctx: ChatMessageContext,
+    ) -> ChatMessage {
+        let mut messages = self.system_messages.clone();
+        messages.extend(self.llm_context.clone().get_message().await.into_iter());
+
+        let response = self
+            .model_client
+            .clone()
+            .create(
+                messages,
+                self.registered_tools.clone(),
+                response_format == ResponseFormat::JsonObject,
+                HashMap::new(),
+            )
+            .await;
+
+        match response.content {
+            ResultContent::TextContent(tc) => {
+                let msg = LlmMessage::assistant_text(tc.text.clone(), AgentId::new(Some("source")));
+                self.llm_context.add_message(msg).await;
+
+                ChatMessage::TextMessage(TextMessage {
+                    content: tc,
+                    source: ctx.sender,
+                })
+            }
+            ResultContent::FunctionCallContent(fcc) => {
+                let func_name = fcc.function_name;
+                let arguments_w_val = fcc.arguments_obj;
+
+                let binding = STORE.lock().unwrap();
+                let func = binding.get(&func_name);
+                let raw_result: String = func.expect("failed to get tool").run(arguments_w_val).expect("failed run");
+
+                let tcrm: ToolCallResultContent = ToolCallResultContent {
+                    content: vec![FunctionExecutionResult {
+                        content: raw_result,
+                        call_id: TopicId::new(Some("place")),
+                    }],
+                };
+
+                ChatMessage::ToolCallResultMessage(ToolCallResultMessage {
+                    content: tcrm,
+                    source: ctx.sender,
+                })
+            }
+            ResultContent::MultiModalContent(mmc) => {
+                match mmc {
+                    MultiModalContent::Text(tc) => ChatMessage::TextMessage(TextMessage {
+                        content: tc,
+                        source: ctx.sender,
+                    }),
+
+                    MultiModalContent::Image(ic) => {
+                        ChatMessage::MultiModalMessage(MultiModalMessage {
+                            content: MultiModalContent::Image(ImageContent { image: ic.image }),
+                            source: ctx.sender,
+                        })
+                    }
+                };
+                todo!()
+            }
+        }
     }
 }
 
@@ -126,14 +260,14 @@ pub struct ModelCapabilities {
 }
 
 #[derive(Clone)]
-pub struct ChatCompletionClient {
+pub struct LlmCompletionClient {
     messages: Vec<LlmMessage>,
     tools: Vec<Tool>,
     json_output: bool,
     extra_create_args: HashMap<String, Value>,
 }
 
-impl ChatCompletionClient {
+impl LlmCompletionClient {
     pub async fn create(
         self,
         messages: Vec<LlmMessage>,
@@ -174,161 +308,3 @@ pub struct PublishNow {
 }
 
 pub struct Reset;
-
-pub struct ChatCompletionAgent {
-    pub name: String,
-    pub description: String,
-    pub model_client: ChatCompletionClient,
-    pub system_message: Vec<LlmMessage>,
-    pub model_context: ChatCompletionContext,
-    pub tools: Vec<Tool>,
-}
-
-impl ChatCompletionAgent {
-    pub async fn on_message(&mut self, message: ChatMessage, ctx: ChatMessageContext) {
-        let msg: LlmMessage = match message {
-            ChatMessage::TextMessage(tex) => {
-                LlmMessage::user_text(tex.content.text, ctx.sender.unwrap())
-            }
-            ChatMessage::MultiModalMessage(mm) => match mm.content {
-                MultiModalContent::Text(tex) => {
-                    LlmMessage::user_text(tex.text, ctx.sender.unwrap())
-                }
-                MultiModalContent::Image(img) => {
-                    LlmMessage::user_image(img.image.into(), ctx.sender.unwrap())
-                }
-            },
-            ChatMessage::ToolCallMessage(tcm) => {
-                let mut res = Vec::<String>::new();
-                for fc in tcm.content.content {
-                    let func_name = fc.function_name;
-                    let arguments_w_val = fc.arguments_obj;
-
-                    let binding = STORE.lock().unwrap();
-                    let func = binding.get(&func_name).unwrap();
-                    let raw_result: String = func.run(arguments_w_val).expect("failed run");
-
-                    res.push(raw_result);
-                }
-                let call_id = new_topic_id();
-                let source = new_agent_id();
-                LlmMessage::function_result(res.join(", "), call_id, source)
-            }
-            ChatMessage::ToolCallResultMessage(tcrm) => {
-                let text = tcrm
-                    .content
-                    .content
-                    .into_iter()
-                    .map(|x| x.content.to_string())
-                    .collect::<Vec<String>>()
-                    .join(",");
-                LlmMessage::user_text(text, ctx.sender.unwrap())
-            }
-            ChatMessage::StopMessage(stp) => LlmMessage::user_text(stp, ctx.sender.unwrap()),
-        };
-        self.model_context.add_message(msg).await;
-    }
-
-    pub async fn on_reset(&mut self, message: Reset, ctx: ChatMessageContext) {
-        self.model_context.clear().await;
-    }
-
-    pub async fn on_response_now(
-        &mut self,
-        message: ResponseNow,
-        ctx: ChatMessageContext,
-    ) -> ChatMessage {
-        let response = self.generate_response(message.response_format, ctx).await;
-
-        response
-    }
-
-    pub async fn on_publish_now(
-        &mut self,
-        message: PublishNow,
-        ctx: ChatMessageContext,
-    ) -> ChatMessage {
-        let response = self.generate_response(message.response_format, ctx).await;
-
-        response
-    }
-
-    pub async fn generate_response(
-        &mut self,
-        response_format: ResponseFormat,
-        ctx: ChatMessageContext,
-    ) -> ChatMessage {
-        let mut messages = self.system_message.clone();
-        messages.extend(self.model_context.clone().get_message().await.into_iter());
-
-        let response = self
-            .model_client
-            .clone()
-            .create(
-                messages,
-                self.tools.clone(),
-                response_format == ResponseFormat::JsonObject,
-                HashMap::new(),
-            )
-            .await;
-
-        match response.content {
-            ResultContent::TextContent(tc) => {
-                let msg = LlmMessage::assistant_text(tc.text.clone(), Uuid::default());
-                self.model_context.add_message(msg).await;
-
-                ChatMessage::TextMessage(TextMessage {
-                    content: tc,
-                    source: ctx.sender.unwrap(),
-                })
-            }
-            ResultContent::FunctionCallContent(fcc) => {
-                let func_name = fcc.function_name;
-                let arguments_w_val = fcc.arguments_obj;
-
-                let binding = STORE.lock().unwrap();
-                let func = binding.get(&func_name).unwrap();
-                let raw_result: String = func.run(arguments_w_val).expect("failed run");
-
-                let tcrm: ToolCallResultContent = ToolCallResultContent {
-                    content: vec![FunctionExecutionResult {
-                        content: raw_result,
-                        call_id: new_agent_id().to_string(),
-                    }],
-                };
-
-                ChatMessage::ToolCallResultMessage(ToolCallResultMessage {
-                    content: tcrm,
-                    source: ctx.sender.unwrap(),
-                })
-            }
-            ResultContent::MultiModalContent(mmc) => {
-                match mmc {
-                    MultiModalContent::Text(tc) => ChatMessage::TextMessage(TextMessage {
-                        content: tc,
-                        source: ctx.sender.unwrap(),
-                    }),
-
-                    MultiModalContent::Image(ic) => {
-                        ChatMessage::MultiModalMessage(MultiModalMessage {
-                            content: MultiModalContent::Image(ImageContent { image: ic.image }),
-                            source: ctx.sender.unwrap(),
-                        })
-                    }
-                };
-                todo!()
-            }
-        }
-    }
-
-    pub fn save_state(&mut self) -> HashMap<String, LlmMessage> {
-        self.model_context.save_state();
-        todo!()
-    }
-
-    pub fn load_state(&mut self, state: HashMap<String, LlmMessage>) {
-        // self.model_context.load_state(state);
-
-        todo!()
-    }
-}

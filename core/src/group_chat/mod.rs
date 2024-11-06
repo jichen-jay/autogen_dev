@@ -1,10 +1,7 @@
-use crate::agent::{agent_runtime::AgentRuntime, chat_agent::Agent};
-use crate::msg_types::*;
-use crate::msg_types::{chat_msg_types::ChatMessage, AgentId, SubscriptionId, TopicId};
-use crate::tool_types::{AgentType, Tool};
-use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, Mutex};
-use tokio::sync::mpsc::{self, Receiver, Sender};
+use crate::agent::agent_runtime::AgentRuntime;
+use crate::msg_types::AgentId;
+
+pub struct TerminationCondition;
 
 pub struct GroupChat {
     pub runtime: AgentRuntime,
@@ -47,56 +44,57 @@ impl GroupChat {
         // ... (Initialize channels and start task handler) ...
 
         // 1. Register participants
-        for (i, participant_id) in self.participants.iter().enumerate() {
-            let agent_type = self.participant_topic_types[i].clone(); // Get from list
-            let topic = TopicId::new(agent_type.clone());
-            let subscription = Subscription {
-                id: topic.clone(),
-                subscription_id: SubscriptionId::new(participant_id.clone(), topic.clone()),
-            };
-            self.runtime.add_subscription(subscription).await;
+        // for (i, participant_id) in self.participants.iter().enumerate() {
+        //     let agent_type = self.participant_topic_types[i].clone(); // Get from list
+        //     let topic = TopicId::new(agent_type.clone());
+        //     let subscription = Subscription {
+        //         id: topic.clone(),
+        //         subscription_id: SubscriptionId::new(participant_id.clone(), topic.clone()),
+        //     };
+        //     self.runtime.add_subscription(subscription).await;
 
-            // ... (Optionally register tools and other subscriptions) ...
-        }
+        //     // ... (Optionally register tools and other subscriptions) ...
+        // }
 
-        // 2. Register the group chat manager
-        // ... (Similar logic for registering the manager with the correct topic types and subscriptions, ensuring it can handle parent topic, round-robin, and possibly individual messages) ...
+        // // 2. Register the group chat manager
+        // // ... (Similar logic for registering the manager with the correct topic types and subscriptions, ensuring it can handle parent topic, round-robin, and possibly individual messages) ...
 
-        // 3. Publish the task
-        self.runtime
-            .publish_message(
-                ChatMessage::Text {
-                    content: task.to_string(),
-                },
-                TopicId::new(self.group_topic_type.clone()),
-                None,
-            )
-            .await;
+        // // 3. Publish the task
+        // self.runtime
+        //     .publish_message(
+        //         ChatMessage::Text {
+        //             content: task.to_string(),
+        //         },
+        //         TopicId::new(self.group_topic_type.clone()),
+        //         None,
+        //     )
+        //     .await;
 
         // ... (Process messages, ensure the process_messages task correctly routes messages based on topic types) ...
+        todo!()
     }
 
-    async fn process_messages(
-        &mut self,
-        message_rx: &mut UnboundedReceiver<ChatMessage>,
-        mut stop_rx: oneshot::Receiver<()>,
-    ) {
-        let mut messages: Vec<ChatMessage> = vec![];
-        loop {
-            tokio::select! {
-                Some(message) = message_rx.recv() => {
-                    // ... (Logic to determine message type based on context or message properties - ensure you handle the three levels of topic types) ...
+    // async fn process_messages(
+    //     &mut self,
+    //     message_rx: &mut UnboundedReceiver<ChatMessage>,
+    //     mut stop_rx: oneshot::Receiver<()>,
+    // ) {
+    //     let mut messages: Vec<ChatMessage> = vec![];
+    //     loop {
+    //         tokio::select! {
+    //             Some(message) = message_rx.recv() => {
+    //                 // ... (Logic to determine message type based on context or message properties - ensure you handle the three levels of topic types) ...
 
-                    messages.push(message);
-                    // ... (Handle the message based on the topic) ...
-                }
-                _ = &mut stop_rx => {
-                    break;
-                }
-            }
-        }
-        // ... (Process messages) ...
-    }
+    //                 messages.push(message);
+    //                 // ... (Handle the message based on the topic) ...
+    //             }
+    //             _ = &mut stop_rx => {
+    //                 break;
+    //             }
+    //         }
+    //     }
+    // ... (Process messages) ...
+    // }
 }
 
 #[tokio::main]
@@ -115,17 +113,17 @@ async fn main() {
     // ... (Register the manager with the parent and the round-robin group topic) ...
 
     // Create the GroupChat
-    let mut group_chat = GroupChat::new(
-        vec![chat_agent_id, another_agent_id],
-        runtime,
-        group_chat_manager_id,
-        group_topic_type.to_string(),
-        Some(TerminationCondition::MaxMessages(5)),
-        parent_topic_type.to_string(),
-        participant_topic_types,
-        participant_descriptions,
-    );
+    // let mut group_chat = GroupChat::new(
+    //     vec![chat_agent_id, another_agent_id],
+    //     runtime,
+    //     group_chat_manager_id,
+    //     group_topic_type.to_string(),
+    //     Some(TerminationCondition::MaxMessages(5)),
+    //     parent_topic_type.to_string(),
+    //     participant_topic_types,
+    //     participant_descriptions,
+    // );
 
-    // Start the conversation stream
-    group_chat.run_stream("Hello everyone!").await;
+    // // Start the conversation stream
+    // group_chat.run_stream("Hello everyone!").await;
 }

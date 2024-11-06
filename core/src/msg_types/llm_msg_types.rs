@@ -1,5 +1,6 @@
 use crate::msg_types::{
-    chat_msg_types::AssistantMessageContent, ImageContent, MultiModalContent, TextContent, FunctionExecutionResult
+    chat_msg_types::AssistantMessageContent, FunctionExecutionResult, ImageContent,
+    MultiModalContent, TextContent,
 };
 use crate::{
     msg_types::{AgentId, TopicId},
@@ -77,23 +78,13 @@ impl LlmMessage {
         })
     }
 
-    pub fn function_result(
-        content: impl Into<String>,
-        call_id: impl Into<String>,
-        source: AgentId,
-    ) -> Self {
+    pub fn function_result(content: impl Into<String>, call_id: TopicId, source: AgentId) -> Self {
         LlmMessage::FunctionExecutionResultMessage(FunctionExecutionResultMessage {
             content: vec![FunctionExecutionResult {
                 content: content.into(),
-                call_id: call_id.into(),
+                call_id: call_id,
             }],
             source: source.into(),
         })
     }
-}
-
-pub struct ChatMessageContext {
-    pub sender: AgentId,
-    pub topic_id: TopicId,
-    pub is_rpc: bool,
 }

@@ -8,7 +8,7 @@ use reqwest::{
 use serde_json::Value;
 
 use crate::agent::llm_backend::{LlmConfig, OPENAI_CONFIG};
-use crate::msg_types::{llm_msg_types::LlmMessage, new_agent_id, RequestUsage};
+use crate::msg_types::{llm_msg_types::LlmMessage, RequestUsage, AgentId};
 use crate::tool_types::FunctionCallInput;
 
 pub async fn chat_wrapper_openai(
@@ -67,8 +67,10 @@ pub async fn chat_wrapper_openai(
                         completion_tokens: 0,
                     });
 
-                let llm_message =
-                    LlmMessage::assistant_text(message.clone().content.unwrap(), new_agent_id());
+                let llm_message = LlmMessage::assistant_text(
+                    message.clone().content.unwrap(),
+                    AgentId::new(Some("hold")),
+                );
                 Ok((llm_message, usage))
             } else {
                 Err(anyhow::anyhow!("Could not convert to LlmMessage"))
@@ -150,7 +152,7 @@ pub async fn chat_inner_async_wrapper(
                                     return Ok((
                                         LlmMessage::assistant_function_run(
                                             first_function_call.clone(),
-                                            new_agent_id(),
+                                            AgentId::new(Some("hold")),
                                         ),
                                         raw_output
                                             .usage
@@ -174,7 +176,10 @@ pub async fn chat_inner_async_wrapper(
                         } else if let Some(content) = &message.content {
                             //content handling
                             return Ok((
-                                LlmMessage::assistant_text(content.clone(), new_agent_id()),
+                                LlmMessage::assistant_text(
+                                    content.clone(),
+                                    AgentId::new(Some("hold")),
+                                ),
                                 raw_output
                                     .usage
                                     .map(|u| RequestUsage {
