@@ -242,8 +242,7 @@ impl AgentRuntime {
     }
 
     pub async fn process_next(&mut self) {
-        // This is the main message processing loop
-/*         while let Some(me) = self.message_queue.pop() {
+        while let Some(me) = self.message_queue.pop() {
             match me {
                 ChatMessageEnvelope::PublishMessageEnvelope(pme) => {
                     self.outstanding_tasks.increment();
@@ -287,7 +286,7 @@ impl AgentRuntime {
                     self.outstanding_tasks.decrement();
                 }
             }
-        } */
+        }
 
        todo!()
     }
@@ -309,7 +308,7 @@ impl AgentRuntime {
         let msg = recipient_agent.on_message(message_envelope.message).await;
 
         let response: ResponseMessage =
-            ResponseMessage::from(msg, recipient.clone(), Some(recipient));
+            ResponseMessage::from(msg, recipient.clone(), None);
         self.message_queue
             .push(ChatMessageEnvelope::ResponseMessageEnvelope(
                 ResponseMessage {
